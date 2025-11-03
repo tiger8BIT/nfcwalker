@@ -1,0 +1,6 @@
+applicationType: default
+defaultPackage: ge.tiger8bit
+testFramework: kotest
+sourceLanguage: kotlin
+buildTool: gradle_kotlin
+features: [ app-name, flyway, gradle, hibernate-jpa, http-client-test, jdbc-hikari, kotest, kotlin, kotlin-application, ksp, logback, management, micronaut-aot, micronaut-build, micronaut-http-validation, netty-server, postgres, properties, readme, security-annotations, security-jwt, serialization-jackson, shade, static-resources, test-resources, validation ]

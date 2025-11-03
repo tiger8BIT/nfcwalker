@@ -1,0 +1,40 @@
+micronaut:
+  application:
+    name: nfcwalker
+  security:
+    authentication: bearer
+    token:
+      jwt:
+        signatures:
+          secret:
+            generator:
+              secret: ${JWT_SECRET:changeThisInProduction}
+
+datasources:
+  default:
+    url: ${JDBC_URL:`jdbc:postgresql://localhost:5432/nfcwalker`}
+    username: ${JDBC_USER:postgres}
+    password: ${JDBC_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    db-type: postgres
+    maximum-pool-size: 3
+
+jpa:
+  default:
+    properties:
+      hibernate:
+        hbm2ddl:
+          auto: none
+        show_sql: false
+        format_sql: false
+
+flyway:
+  datasources:
+    default:
+      enabled: true
+
+app:
+  challenge:
+    secret: ${APP_CHALLENGE_SECRET:changeThisInProduction}
+    ttl-seconds: 60
+

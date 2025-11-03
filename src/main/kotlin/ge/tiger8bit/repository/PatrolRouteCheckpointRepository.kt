@@ -1,0 +1,12 @@
+package ge.tiger8bit.repository
+
+import ge.tiger8bit.domain.PatrolRouteCheckpoint
+import ge.tiger8bit.domain.PatrolRouteCheckpointId
+import io.micronaut.data.annotation.Repository
+import io.micronaut.data.jpa.repository.JpaRepository
+
+@Repository
+interface PatrolRouteCheckpointRepository : JpaRepository<PatrolRouteCheckpoint, PatrolRouteCheckpointId> {
+    fun findByRouteIdOrderBySeqAsc(routeId: Long): List<PatrolRouteCheckpoint>
+}
+

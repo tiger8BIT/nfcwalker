@@ -1,0 +1,23 @@
+package ge.tiger8bit.domain
+
+import io.micronaut.serde.annotation.Serdeable
+import jakarta.persistence.*
+import java.time.Instant
+
+@Entity
+@Table(name = "organizations")
+@Serdeable
+class Organization(
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    var id: Long? = null,
+
+    @Column(nullable = false, length = 200)
+    var name: String = "",
+
+    @Column(name = "created_at", nullable = false)
+    var createdAt: Instant = Instant.now()
+) {
+    constructor(name: String) : this(null, name, Instant.now())
+}
+
