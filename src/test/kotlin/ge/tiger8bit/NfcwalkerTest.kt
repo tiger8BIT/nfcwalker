@@ -27,8 +27,14 @@ class NfcwalkerTest(
     private val patrolRouteRepository: PatrolRouteRepository,
     private val patrolRouteCheckpointRepository: PatrolRouteCheckpointRepository,
     private val patrolRunRepository: PatrolRunRepository,
+    private val challengeUsedRepository: ChallengeUsedRepository,
     private val patrolScanEventRepository: PatrolScanEventRepository
 ) : StringSpec({
+
+    beforeSpec {
+        // Ensure no leftover challenge JTIs from previous runs
+        TestFixtures.cleanupChallengeUsed(challengeUsedRepository)
+    }
 
     // single token used by all tests (makes debugging/printing easier)
     val authToken = TestAuth.generateToken()
@@ -41,11 +47,7 @@ class NfcwalkerTest(
     }
 
     "should create checkpoint via admin API" {
-        val org = organizationRepository.save(Organization(name = "Test Org"))
-        // ensure the insert is flushed and visible to the HTTP call in another transaction
-        organizationRepository.flush()
-        val site = siteRepository.save(Site(organizationId = org.id!!, name = "Test Site"))
-        siteRepository.flush()
+        val (org, site) = TestFixtures.seedOrgAndSite(organizationRepository, siteRepository, "Test Org", "Test Site")
 
         val request = CreateCheckpointRequest(
             organizationId = org.id!!,
@@ -66,17 +68,8 @@ class NfcwalkerTest(
     }
 
     "should list checkpoints by site" {
-        val org = organizationRepository.save(Organization(name = "Test Org 2"))
-        organizationRepository.flush()
-        val site = siteRepository.save(Site(organizationId = org.id!!, name = "Test Site 2"))
-        siteRepository.flush()
-        checkpointRepository.save(
-            Checkpoint(
-                organizationId = org.id!!,
-                siteId = site.id!!,
-                code = "CP-LIST-001"
-            )
-        )
+        val (org, site) = TestFixtures.seedOrgAndSite(organizationRepository, siteRepository, "Test Org 2", "Test Site 2")
+        TestFixtures.createCheckpoint(checkpointRepository, org.id!!, site.id!!, "CP-LIST-001")
 
         checkpointRepository.flush()
 
@@ -90,14 +83,23 @@ class NfcwalkerTest(
     }
 
     "should create route and add checkpoints" {
-        val org = organizationRepository.save(Organization(name = "Test Org 3"))
-        organizationRepository.flush()
-        val site = siteRepository.save(Site(organizationId = org.id!!, name = "Test Site 3"))
-        siteRepository.flush()
+        val (route, cps) = TestFixtures.createRouteWithTwoCheckpoints(
+            organizationRepository,
+            siteRepository,
+            checkpointRepository,
+            patrolRouteRepository,
+            patrolRouteCheckpointRepository,
+            "Test Org 3",
+            "Test Site 3",
+            "CP-R1-001",
+            "CP-R1-002"
+        )
+
+        val (cp1, cp2) = cps
 
         val routeRequest = CreateRouteRequest(
-            organizationId = org.id!!,
-            siteId = site.id!!,
+            organizationId = route.organizationId,
+            siteId = route.siteId,
             name = "Night Patrol Route"
         )
 
@@ -107,15 +109,6 @@ class NfcwalkerTest(
         )
 
         routeResponse.name shouldBe "Night Patrol Route"
-
-        val cp1 = checkpointRepository.save(
-            Checkpoint(organizationId = org.id!!, siteId = site.id!!, code = "CP-R1-001")
-        )
-        val cp2 = checkpointRepository.save(
-            Checkpoint(organizationId = org.id!!, siteId = site.id!!, code = "CP-R1-002")
-        )
-
-        checkpointRepository.flush()
 
         val addPointsRequest = BulkAddRouteCheckpointsRequest(
             checkpoints = listOf(
@@ -133,44 +126,11 @@ class NfcwalkerTest(
     }
 
     "should complete full scan flow: start then finish successfully" {
-        // Seed data
-        val org = organizationRepository.save(Organization(name = "Scan Test Org"))
-        organizationRepository.flush()
-        val site = siteRepository.save(Site(organizationId = org.id!!, name = "Scan Test Site"))
-        siteRepository.flush()
-        val checkpoint = checkpointRepository.save(
-            Checkpoint(
-                organizationId = org.id!!,
-                siteId = site.id!!,
-                code = "CP-SCAN-001",
-                geoLat = BigDecimal("41.7151377"),
-                geoLon = BigDecimal("44.8270903"),
-                radiusM = BigDecimal("100.00")
-            )
-        )
-
-        checkpointRepository.flush()
-        val route = patrolRouteRepository.save(
-            PatrolRoute(organizationId = org.id!!, siteId = site.id!!, name = "Test Route")
-        )
-        patrolRouteCheckpointRepository.save(
-            PatrolRouteCheckpoint(
-                routeId = route.id!!,
-                checkpointId = checkpoint.id!!,
-                seq = 1,
-                minOffsetSec = 0,
-                maxOffsetSec = 3600
-            )
-        )
-        val patrolRun = patrolRunRepository.save(
-            PatrolRun(
-                routeId = route.id!!,
-                organizationId = org.id!!,
-                plannedStart = Instant.now(),
-                plannedEnd = Instant.now().plusSeconds(7200),
-                status = "in_progress"
-            )
-        )
+        val (org, site) = TestFixtures.seedOrgAndSite(organizationRepository, siteRepository, "Scan Test Org", "Scan Test Site")
+        val checkpoint = TestFixtures.createCheckpoint(checkpointRepository, org.id!!, site.id!!, "CP-SCAN-001", BigDecimal("41.7151377"), BigDecimal("44.8270903"), BigDecimal("100.00"))
+        val route = patrolRouteRepository.save(PatrolRoute(organizationId = org.id!!, siteId = site.id!!, name = "Test Route"))
+        patrolRouteCheckpointRepository.save(PatrolRouteCheckpoint(routeId = route.id!!, checkpointId = checkpoint.id!!, seq = 1, minOffsetSec = 0, maxOffsetSec = 3600))
+        val patrolRun = TestFixtures.createPatrolRun(patrolRunRepository, route.id!!, org.id!!)
 
         patrolRunRepository.flush()
 
@@ -178,7 +138,7 @@ class NfcwalkerTest(
         val startRequest = StartScanRequest(
             organizationId = org.id!!,
             deviceId = "device-123",
-            checkpointCode = "CP-SCAN-001"
+            checkpointCode = checkpoint.code
         )
 
         val startResponse = client.toBlocking().retrieve(
@@ -214,38 +174,11 @@ class NfcwalkerTest(
     }
 
     "should reject replay attack - second finish with same challenge fails" {
-        // Seed data
-        val org = organizationRepository.save(Organization(name = "Replay Test Org"))
-        organizationRepository.flush()
-        val site = siteRepository.save(Site(organizationId = org.id!!, name = "Replay Test Site"))
-        siteRepository.flush()
-        val checkpoint = checkpointRepository.save(
-            Checkpoint(
-                organizationId = org.id!!,
-                siteId = site.id!!,
-                code = "CP-REPLAY-001"
-            )
-        )
-        checkpointRepository.flush()
-        val route = patrolRouteRepository.save(
-            PatrolRoute(organizationId = org.id!!, siteId = site.id!!, name = "Replay Test Route")
-        )
-        patrolRouteCheckpointRepository.save(
-            PatrolRouteCheckpoint(
-                routeId = route.id!!,
-                checkpointId = checkpoint.id!!,
-                seq = 1
-            )
-        )
-        patrolRunRepository.save(
-            PatrolRun(
-                routeId = route.id!!,
-                organizationId = org.id!!,
-                plannedStart = Instant.now(),
-                plannedEnd = Instant.now().plusSeconds(7200),
-                status = "pending"
-            )
-        )
+        val (org, site) = TestFixtures.seedOrgAndSite(organizationRepository, siteRepository, "Replay Test Org", "Replay Test Site")
+        val checkpoint = TestFixtures.createCheckpoint(checkpointRepository, org.id!!, site.id!!, "CP-REPLAY-001")
+        val route = patrolRouteRepository.save(PatrolRoute(organizationId = org.id!!, siteId = site.id!!, name = "Replay Test Route"))
+        patrolRouteCheckpointRepository.save(PatrolRouteCheckpoint(routeId = route.id!!, checkpointId = checkpoint.id!!, seq = 1))
+        patrolRunRepository.save(PatrolRun(routeId = route.id!!, organizationId = org.id!!, plannedStart = Instant.now(), plannedEnd = Instant.now().plusSeconds(7200), status = "pending"))
 
         // Start scan
         val startRequest = StartScanRequest(

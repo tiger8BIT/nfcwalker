@@ -7,18 +7,22 @@ import com.nimbusds.jose.crypto.MACVerifier
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import ge.tiger8bit.domain.ChallengeUsed
-import ge.tiger8bit.repository.ChallengeUsedRepository
 import io.micronaut.context.annotation.Property
 import jakarta.inject.Singleton
+import jakarta.persistence.EntityManager
+import jakarta.transaction.Transactional
+import jakarta.transaction.Transactional.TxType
 import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.util.*
 
 @Singleton
-class ChallengeService(
-    private val challengeUsedRepository: ChallengeUsedRepository,
-    @Property(name = "app.challenge.secret") private val secret: String,
-    @Property(name = "app.challenge.ttl-seconds") private val ttlSeconds: Long
+open class ChallengeService(
+    private val em: EntityManager,
+    @Property(name = "app.challenge.secret", defaultValue = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+    private val secret: String,
+    @Property(name = "app.challenge.ttl-seconds", defaultValue = "60")
+    private val ttlSeconds: Long
 ) {
     private val logger = LoggerFactory.getLogger(ChallengeService::class.java)
 
@@ -47,7 +51,8 @@ class ChallengeService(
         return signedJWT.serialize()
     }
 
-    fun validateAndConsume(
+    @Transactional(value = TxType.REQUIRES_NEW)
+    open fun validateAndConsume(
         jws: String,
         expectedOrg: Long,
         expectedDev: String,
@@ -86,7 +91,15 @@ class ChallengeService(
             val issuedAt = claims.issueTime.toInstant()
             val expiresAt = claims.expirationTime.toInstant()
 
-            // Try to insert into challenge_used
+            // If JTI already present, treat as replay immediately
+            val existing = em.find(ChallengeUsed::class.java, jti)
+            if (existing != null) {
+                logger.warn("Challenge replay detected (precheck): jti=$jti")
+                return ValidationResult.Replay("Challenge already used")
+            }
+
+            // Try to insert into challenge_used and flush synchronously so DB constraint
+            // violations (duplicate PK) are thrown inside the try/catch and mapped to Replay.
             val challengeUsed = ChallengeUsed().apply {
                 this.jti = jti
                 this.issuedAt = issuedAt
@@ -97,10 +110,11 @@ class ChallengeService(
             }
 
             return try {
-                challengeUsedRepository.save(challengeUsed)
+                em.persist(challengeUsed)
+                em.flush()
                 ValidationResult.Valid(jti)
             } catch (e: Exception) {
-                logger.warn("Challenge replay detected: jti=$jti", e)
+                logger.warn("Challenge replay detected on persist: jti=$jti", e)
                 ValidationResult.Replay("Challenge already used")
             }
 
@@ -116,4 +130,3 @@ sealed class ValidationResult {
     data class Invalid(val reason: String) : ValidationResult()
     data class Replay(val reason: String) : ValidationResult()
 }
-
