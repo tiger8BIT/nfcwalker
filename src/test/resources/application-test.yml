@@ -32,8 +32,9 @@ datasources:
     db-type: postgres
 
 app:
+  # Use a 32-byte (256-bit) secret for challenge signing in tests to satisfy HS256
   challenge:
-    secret: test-secret-for-challenges
+    secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
     ttl-seconds: 60
 
 # Enable debug logging for security to diagnose token validation issues during tests
