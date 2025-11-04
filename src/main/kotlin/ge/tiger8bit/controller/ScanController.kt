@@ -10,10 +10,12 @@ import io.micronaut.http.HttpStatus
 import io.micronaut.http.annotation.*
 import io.micronaut.http.exceptions.HttpStatusException
 import jakarta.transaction.Transactional
+import io.micronaut.security.annotation.Secured
 import org.slf4j.LoggerFactory
 import java.time.Instant
 
 @Controller("/api/scan")
+@Secured("ROLE_WORKER","ROLE_BOSS")
 open class ScanController(
     private val checkpointRepository: CheckpointRepository,
     private val patrolRunRepository: PatrolRunRepository,
@@ -53,6 +55,9 @@ open class ScanController(
             checkpointId = checkpoint.id!!
         )
 
+        // Log issued challenge in debug for easier troubleshooting during tests
+        logger.debug("Issued challenge for org=${request.organizationId}, device=${request.deviceId}, cp=${checkpoint.id}: $challenge")
+
         val policy = ScanPolicy(
             runId = patrolRun.id!!,
             checkpointId = checkpoint.id!!,
@@ -85,7 +90,7 @@ open class ScanController(
                 claims.getClaim("dev") as String,
                 (claims.getClaim("cp") as Number).toLong()
             )
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             throw HttpStatusException(HttpStatus.BAD_REQUEST, "Invalid challenge format")
         }
 
@@ -130,4 +135,3 @@ open class ScanController(
         }
     }
 }
-

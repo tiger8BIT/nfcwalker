@@ -9,13 +9,18 @@ import ge.tiger8bit.repository.PatrolRouteCheckpointRepository
 import ge.tiger8bit.repository.PatrolRouteRepository
 import io.micronaut.http.annotation.*
 import jakarta.transaction.Transactional
+import io.micronaut.security.annotation.Secured
 
 @Controller("/api/admin")
+@Secured("ROLE_BOSS") // only bosses can call admin endpoints
 open class AdminController(
     private val checkpointRepository: CheckpointRepository,
     private val patrolRouteRepository: PatrolRouteRepository,
     private val patrolRouteCheckpointRepository: PatrolRouteCheckpointRepository
 ) {
+
+    // The endpoints below perform admin actions; additionally individual endpoints
+    // can be secured with @Secured("ROLE_ADMIN") if role-based restriction is desired.
 
     @Post("/checkpoints")
     @Transactional
@@ -97,4 +102,3 @@ open class AdminController(
         return mapOf("added" to checkpoints.size)
     }
 }
-

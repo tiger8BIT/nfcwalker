@@ -2,12 +2,33 @@ micronaut:
   application:
     name: nfcwalker
   test-resources:
-    containers:
-      postgres:
-        image-name: postgres:15
+    enabled: false
+  security:
+    enabled: true
+    authentication: bearer
+    token:
+      jwt:
+        roles-claim: roles
+        signatures:
+          secret:
+            default:
+              # Named secret entry (default) with explicit value for verification
+              secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+              generator:
+                secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+# Test-only toggles
+test:
+  security:
+    rule:
+      enabled: false
 
 datasources:
   default:
+    url: "jdbc:tc:postgresql:15:///testdb"
+    username: test
+    password: test
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
     db-type: postgres
 
 app:
@@ -15,3 +36,9 @@ app:
     secret: test-secret-for-challenges
     ttl-seconds: 60
 
+# Enable debug logging for security to diagnose token validation issues during tests
+logging:
+  level:
+    io.micronaut.security: DEBUG
+    io.micronaut.security.token: DEBUG
+    io.micronaut.security.token.jwt: DEBUG

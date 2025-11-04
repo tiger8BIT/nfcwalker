@@ -54,6 +54,16 @@ dependencies {
     aotPlugins("io.micronaut.security:micronaut-security-aot")
 }
 
+// Exclude cloud function runtime jars from test runtime classpath to avoid multiple
+// ServerRequestBinderRegistry candidates during tests. Netty should be the only
+// registry used in unit/integration tests.
+configurations {
+    named("testRuntimeClasspath") {
+        exclude(group = "io.micronaut.aws", module = "micronaut-function-aws-api-proxy")
+        exclude(group = "io.micronaut.gcp", module = "micronaut-gcp-function-http")
+    }
+}
+
 
 application {
     mainClass = "ge.tiger8bit.ApplicationKt"
@@ -95,4 +105,9 @@ tasks.named<io.micronaut.gradle.docker.NativeImageDockerfile>("dockerfileNative"
     jdkVersion = "21"
 }
 
-
+tasks.withType<Test> {
+    // Ensure tests run with Java 21 if not already set externally
+    jvmArgs("-Dfile.encoding=UTF-8")
+    // 32-byte secret (64 hex chars) to satisfy HS256 256-bit minimum key length
+    environment("JWT_SECRET", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+}

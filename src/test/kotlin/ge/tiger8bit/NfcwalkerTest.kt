@@ -17,7 +17,7 @@ import org.junit.jupiter.api.assertThrows
 import java.math.BigDecimal
 import java.time.Instant
 
-@MicronautTest
+@MicronautTest(transactional = false)
 class NfcwalkerTest(
     private val application: EmbeddedApplication<*>,
     @Client("/") private val client: HttpClient,
@@ -30,13 +30,22 @@ class NfcwalkerTest(
     private val patrolScanEventRepository: PatrolScanEventRepository
 ) : StringSpec({
 
+    // single token used by all tests (makes debugging/printing easier)
+    val authToken = TestAuth.generateToken()
+    println("TEST AUTH TOKEN: $authToken")
+    println("TOKEN VALID: ${TestAuth.validateToken(authToken)}")
+    println("TOKEN CLAIMS: ${TestAuth.decodeClaims(authToken)}")
+
     "test the server is running" {
         assert(application.isRunning)
     }
 
     "should create checkpoint via admin API" {
         val org = organizationRepository.save(Organization(name = "Test Org"))
+        // ensure the insert is flushed and visible to the HTTP call in another transaction
+        organizationRepository.flush()
         val site = siteRepository.save(Site(organizationId = org.id!!, name = "Test Site"))
+        siteRepository.flush()
 
         val request = CreateCheckpointRequest(
             organizationId = org.id!!,
@@ -48,7 +57,7 @@ class NfcwalkerTest(
         )
 
         val response = client.toBlocking().retrieve(
-            HttpRequest.POST("/api/admin/checkpoints", request),
+            HttpRequest.POST("/api/admin/checkpoints", request).withAuth(authToken),
             CheckpointResponse::class.java
         )
 
@@ -58,7 +67,9 @@ class NfcwalkerTest(
 
     "should list checkpoints by site" {
         val org = organizationRepository.save(Organization(name = "Test Org 2"))
+        organizationRepository.flush()
         val site = siteRepository.save(Site(organizationId = org.id!!, name = "Test Site 2"))
+        siteRepository.flush()
         checkpointRepository.save(
             Checkpoint(
                 organizationId = org.id!!,
@@ -67,8 +78,10 @@ class NfcwalkerTest(
             )
         )
 
+        checkpointRepository.flush()
+
         val checkpoints = client.toBlocking().retrieve(
-            HttpRequest.GET<Any>("/api/admin/checkpoints?siteId=${site.id}"),
+            HttpRequest.GET<Any>("/api/admin/checkpoints?siteId=${site.id}").withAuth(authToken),
             Array<CheckpointResponse>::class.java
         ).toList()
 
@@ -78,7 +91,9 @@ class NfcwalkerTest(
 
     "should create route and add checkpoints" {
         val org = organizationRepository.save(Organization(name = "Test Org 3"))
+        organizationRepository.flush()
         val site = siteRepository.save(Site(organizationId = org.id!!, name = "Test Site 3"))
+        siteRepository.flush()
 
         val routeRequest = CreateRouteRequest(
             organizationId = org.id!!,
@@ -87,7 +102,7 @@ class NfcwalkerTest(
         )
 
         val routeResponse = client.toBlocking().retrieve(
-            HttpRequest.POST("/api/admin/routes", routeRequest),
+            HttpRequest.POST("/api/admin/routes", routeRequest).withAuth(authToken),
             RouteResponse::class.java
         )
 
@@ -100,6 +115,8 @@ class NfcwalkerTest(
             Checkpoint(organizationId = org.id!!, siteId = site.id!!, code = "CP-R1-002")
         )
 
+        checkpointRepository.flush()
+
         val addPointsRequest = BulkAddRouteCheckpointsRequest(
             checkpoints = listOf(
                 AddRouteCheckpointRequest(checkpointId = cp1.id!!, seq = 1, minOffsetSec = 0, maxOffsetSec = 3600),
@@ -108,7 +125,7 @@ class NfcwalkerTest(
         )
 
         val addResponse = client.toBlocking().retrieve(
-            HttpRequest.POST("/api/admin/routes/${routeResponse.id}/points", addPointsRequest),
+            HttpRequest.POST("/api/admin/routes/${routeResponse.id}/points", addPointsRequest).withAuth(authToken),
             Map::class.java
         )
 
@@ -118,7 +135,9 @@ class NfcwalkerTest(
     "should complete full scan flow: start then finish successfully" {
         // Seed data
         val org = organizationRepository.save(Organization(name = "Scan Test Org"))
+        organizationRepository.flush()
         val site = siteRepository.save(Site(organizationId = org.id!!, name = "Scan Test Site"))
+        siteRepository.flush()
         val checkpoint = checkpointRepository.save(
             Checkpoint(
                 organizationId = org.id!!,
@@ -129,6 +148,8 @@ class NfcwalkerTest(
                 radiusM = BigDecimal("100.00")
             )
         )
+
+        checkpointRepository.flush()
         val route = patrolRouteRepository.save(
             PatrolRoute(organizationId = org.id!!, siteId = site.id!!, name = "Test Route")
         )
@@ -151,6 +172,8 @@ class NfcwalkerTest(
             )
         )
 
+        patrolRunRepository.flush()
+
         // Start scan
         val startRequest = StartScanRequest(
             organizationId = org.id!!,
@@ -159,7 +182,7 @@ class NfcwalkerTest(
         )
 
         val startResponse = client.toBlocking().retrieve(
-            HttpRequest.POST("/api/scan/start", startRequest),
+            HttpRequest.POST("/api/scan/start", startRequest).withAuth(authToken),
             StartScanResponse::class.java
         )
 
@@ -177,7 +200,7 @@ class NfcwalkerTest(
         )
 
         val finishResponse = client.toBlocking().retrieve(
-            HttpRequest.POST("/api/scan/finish", finishRequest),
+            HttpRequest.POST("/api/scan/finish", finishRequest).withAuth(authToken),
             FinishScanResponse::class.java
         )
 
@@ -193,7 +216,9 @@ class NfcwalkerTest(
     "should reject replay attack - second finish with same challenge fails" {
         // Seed data
         val org = organizationRepository.save(Organization(name = "Replay Test Org"))
+        organizationRepository.flush()
         val site = siteRepository.save(Site(organizationId = org.id!!, name = "Replay Test Site"))
+        siteRepository.flush()
         val checkpoint = checkpointRepository.save(
             Checkpoint(
                 organizationId = org.id!!,
@@ -201,6 +226,7 @@ class NfcwalkerTest(
                 code = "CP-REPLAY-001"
             )
         )
+        checkpointRepository.flush()
         val route = patrolRouteRepository.save(
             PatrolRoute(organizationId = org.id!!, siteId = site.id!!, name = "Replay Test Route")
         )
@@ -229,7 +255,7 @@ class NfcwalkerTest(
         )
 
         val startResponse = client.toBlocking().retrieve(
-            HttpRequest.POST("/api/scan/start", startRequest),
+            HttpRequest.POST("/api/scan/start", startRequest).withAuth(authToken),
             StartScanResponse::class.java
         )
 
@@ -241,7 +267,7 @@ class NfcwalkerTest(
         )
 
         val finishResponse = client.toBlocking().retrieve(
-            HttpRequest.POST("/api/scan/finish", finishRequest),
+            HttpRequest.POST("/api/scan/finish", finishRequest).withAuth(authToken),
             FinishScanResponse::class.java
         )
 
@@ -250,7 +276,7 @@ class NfcwalkerTest(
         // Second finish with SAME challenge - should fail with 409 CONFLICT
         val exception = assertThrows<HttpClientResponseException> {
             client.toBlocking().retrieve(
-                HttpRequest.POST("/api/scan/finish", finishRequest),
+                HttpRequest.POST("/api/scan/finish", finishRequest).withAuth(authToken),
                 FinishScanResponse::class.java
             )
         }
