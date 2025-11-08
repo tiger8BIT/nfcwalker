@@ -7,12 +7,12 @@ import com.nimbusds.jose.crypto.MACVerifier
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import ge.tiger8bit.domain.ChallengeUsed
+import ge.tiger8bit.getLogger
 import io.micronaut.context.annotation.Property
 import jakarta.inject.Singleton
 import jakarta.persistence.EntityManager
 import jakarta.transaction.Transactional
 import jakarta.transaction.Transactional.TxType
-import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.util.*
 
@@ -24,7 +24,7 @@ open class ChallengeService(
     @Property(name = "app.challenge.ttl-seconds", defaultValue = "60")
     private val ttlSeconds: Long
 ) {
-    private val logger = LoggerFactory.getLogger(ChallengeService::class.java)
+    private val logger = getLogger()
 
     fun issue(orgId: UUID, deviceId: String, checkpointId: UUID, ttl: Long = ttlSeconds): String {
         val now = Instant.now()
@@ -48,6 +48,8 @@ open class ChallengeService(
         val signer = MACSigner(secret.toByteArray())
         signedJWT.sign(signer)
 
+        logger.debug("Challenge issued: jti={}, org={}, cp={}, ttl={}", jti, orgId, checkpointId, ttl)
+
         return signedJWT.serialize()
     }
 
@@ -63,6 +65,7 @@ open class ChallengeService(
             val verifier = MACVerifier(secret.toByteArray())
 
             if (!signedJWT.verify(verifier)) {
+                logger.warn("Challenge signature invalid")
                 return ValidationResult.Invalid("Invalid signature")
             }
 
@@ -70,12 +73,14 @@ open class ChallengeService(
             val now = Date()
 
             if (claims.expirationTime.before(now)) {
+                logger.warn("Challenge expired: jti={}", claims.getStringClaim("jti"))
                 return ValidationResult.Invalid("Challenge expired")
             }
 
             val org = try {
                 UUID.fromString(claims.getClaim("org") as String)
             } catch (_: Exception) {
+                logger.warn("Invalid org claim in challenge")
                 return ValidationResult.Invalid("Invalid org claim")
             }
 
@@ -84,16 +89,20 @@ open class ChallengeService(
             val cp = try {
                 UUID.fromString(claims.getClaim("cp") as String)
             } catch (_: Exception) {
+                logger.warn("Invalid cp claim in challenge")
                 return ValidationResult.Invalid("Invalid cp claim")
             }
 
             if (org != expectedOrg) {
+                logger.warn("Challenge org mismatch: expected={}, got={}", expectedOrg, org)
                 return ValidationResult.Invalid("Organization mismatch")
             }
             if (dev != expectedDev) {
+                logger.warn("Challenge device mismatch: expected={}, got={}", expectedDev, dev)
                 return ValidationResult.Invalid("Device mismatch")
             }
             if (cp != expectedCp) {
+                logger.warn("Challenge checkpoint mismatch: expected={}, got={}", expectedCp, cp)
                 return ValidationResult.Invalid("Checkpoint mismatch")
             }
 
@@ -101,15 +110,12 @@ open class ChallengeService(
             val issuedAt = claims.issueTime.toInstant()
             val expiresAt = claims.expirationTime.toInstant()
 
-            // If JTI already present, treat as replay immediately
             val existing = em.find(ChallengeUsed::class.java, jti)
             if (existing != null) {
-                logger.warn("Challenge replay detected (precheck): jti=$jti")
+                logger.warn("Challenge replay detected (precheck): jti={}", jti)
                 return ValidationResult.Replay("Challenge already used")
             }
 
-            // Try to insert into challenge_used and flush synchronously so DB constraint
-            // violations (duplicate PK) are thrown inside the try/catch and mapped to Replay.
             val challengeUsed = ChallengeUsed().apply {
                 this.jti = jti
                 this.issuedAt = issuedAt
@@ -122,9 +128,10 @@ open class ChallengeService(
             return try {
                 em.persist(challengeUsed)
                 em.flush()
+                logger.info("Challenge consumed: jti={}, org={}, cp={}", jti, expectedOrg, expectedCp)
                 ValidationResult.Valid(jti)
             } catch (e: Exception) {
-                logger.warn("Challenge replay detected on persist: jti=$jti", e)
+                logger.warn("Challenge replay detected on persist: jti={}", jti)
                 ValidationResult.Replay("Challenge already used")
             }
 

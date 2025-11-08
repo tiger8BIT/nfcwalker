@@ -7,25 +7,26 @@ import ge.tiger8bit.dto.*
 import ge.tiger8bit.repository.CheckpointRepository
 import ge.tiger8bit.repository.PatrolRouteCheckpointRepository
 import ge.tiger8bit.repository.PatrolRouteRepository
+import ge.tiger8bit.getLogger
 import io.micronaut.http.annotation.*
 import jakarta.transaction.Transactional
 import io.micronaut.security.annotation.Secured
 import java.util.UUID
 
 @Controller("/api/admin")
-@Secured("ROLE_BOSS") // only bosses can call admin endpoints
+@Secured("ROLE_BOSS")
 open class AdminController(
     private val checkpointRepository: CheckpointRepository,
     private val patrolRouteRepository: PatrolRouteRepository,
     private val patrolRouteCheckpointRepository: PatrolRouteCheckpointRepository
 ) {
-
-    // The endpoints below perform admin actions; additionally individual endpoints
-    // can be secured with @Secured("ROLE_ADMIN") if role-based restriction is desired.
+    private val logger = getLogger()
 
     @Post("/checkpoints")
     @Transactional
     open fun createCheckpoint(@Body request: CreateCheckpointRequest): CheckpointResponse {
+        logger.debug("Creating checkpoint: code={}, orgId={}, siteId={}", request.code, request.organizationId, request.siteId)
+
         val checkpoint = checkpointRepository.save(
             Checkpoint(
                 organizationId = request.organizationId,
@@ -37,35 +38,25 @@ open class AdminController(
             )
         )
 
-        return CheckpointResponse(
-            id = checkpoint.id!!,
-            organizationId = checkpoint.organizationId,
-            siteId = checkpoint.siteId,
-            code = checkpoint.code,
-            geoLat = checkpoint.geoLat,
-            geoLon = checkpoint.geoLon,
-            radiusM = checkpoint.radiusM
-        )
+        logger.info("Checkpoint created: id={}, code={}", checkpoint.id, checkpoint.code)
+        return checkpoint.toResponse()
     }
 
     @Get("/checkpoints")
     fun listCheckpoints(@QueryValue siteId: UUID): List<CheckpointResponse> {
-        return checkpointRepository.findBySiteId(siteId).map { checkpoint ->
-            CheckpointResponse(
-                id = checkpoint.id!!,
-                organizationId = checkpoint.organizationId,
-                siteId = checkpoint.siteId,
-                code = checkpoint.code,
-                geoLat = checkpoint.geoLat,
-                geoLon = checkpoint.geoLon,
-                radiusM = checkpoint.radiusM
-            )
-        }
+        logger.debug("Listing checkpoints for site: {}", siteId)
+
+        val checkpoints = checkpointRepository.findBySiteId(siteId)
+        logger.info("Found {} checkpoints in site: {}", checkpoints.size, siteId)
+
+        return checkpoints.map { it.toResponse() }
     }
 
     @Post("/routes")
     @Transactional
     open fun createRoute(@Body request: CreateRouteRequest): RouteResponse {
+        logger.debug("Creating route: name={}, orgId={}, siteId={}", request.name, request.organizationId, request.siteId)
+
         val route = patrolRouteRepository.save(
             PatrolRoute(
                 organizationId = request.organizationId,
@@ -74,12 +65,8 @@ open class AdminController(
             )
         )
 
-        return RouteResponse(
-            id = route.id!!,
-            organizationId = route.organizationId,
-            siteId = route.siteId,
-            name = route.name
-        )
+        logger.info("Route created: id={}, name={}", route.id, route.name)
+        return route.toResponse()
     }
 
     @Post("/routes/{id}/points")
@@ -88,18 +75,39 @@ open class AdminController(
         @PathVariable id: UUID,
         @Body request: BulkAddRouteCheckpointsRequest
     ): Map<String, Any> {
-        val checkpoints = request.checkpoints.map { cp ->
-            PatrolRouteCheckpoint().apply {
-                routeId = id
-                checkpointId = cp.checkpointId
-                seq = cp.seq
-                minOffsetSec = cp.minOffsetSec
-                maxOffsetSec = cp.maxOffsetSec
-            }
-        }
+        logger.debug("Adding {} checkpoints to route: {}", request.checkpoints.size, id)
 
+        val checkpoints = request.checkpoints.map { it.toEntity(id) }
         patrolRouteCheckpointRepository.saveAll(checkpoints)
 
+        logger.info("Added {} route checkpoints to route: {}", checkpoints.size, id)
         return mapOf("added" to checkpoints.size)
     }
+
+    // ===== Private Helpers =====
+
+    private fun Checkpoint.toResponse() = CheckpointResponse(
+        id = id!!,
+        organizationId = organizationId,
+        siteId = siteId,
+        code = code,
+        geoLat = geoLat,
+        geoLon = geoLon,
+        radiusM = radiusM
+    )
+
+    private fun PatrolRoute.toResponse() = RouteResponse(
+        id = id!!,
+        organizationId = organizationId,
+        siteId = siteId,
+        name = name
+    )
+
+    private fun AddRouteCheckpointRequest.toEntity(routeId: UUID) = PatrolRouteCheckpoint(
+        routeId = routeId,
+        checkpointId = checkpointId,
+        seq = seq,
+        minOffsetSec = minOffsetSec,
+        maxOffsetSec = maxOffsetSec
+    )
 }

@@ -75,6 +75,7 @@ java {
 
 graalvmNative.toolchainDetection = false
 
+
 micronaut {
     runtime("netty")
     testRuntime("kotest5")
