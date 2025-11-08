@@ -3,6 +3,7 @@ package ge.tiger8bit.domain
 import io.micronaut.serde.annotation.Serdeable
 import jakarta.persistence.*
 import java.io.Serializable
+import java.util.UUID
 
 @Entity
 @Table(
@@ -16,11 +17,11 @@ import java.io.Serializable
 class PatrolRouteCheckpoint(
     @Id
     @Column(name = "route_id", nullable = false)
-    var routeId: Long = 0,
+    var routeId: UUID = UUID(0, 0),
 
     @Id
     @Column(name = "checkpoint_id", nullable = false)
-    var checkpointId: Long = 0,
+    var checkpointId: UUID = UUID(0, 0),
 
     @Column(nullable = false)
     var seq: Int = 0,
@@ -34,7 +35,7 @@ class PatrolRouteCheckpoint(
 
 @Serdeable
 data class PatrolRouteCheckpointId(
-    var routeId: Long = 0,
-    var checkpointId: Long = 0
+    var routeId: UUID = UUID(0, 0),
+    var checkpointId: UUID = UUID(0, 0)
 ) : Serializable
 

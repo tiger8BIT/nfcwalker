@@ -13,6 +13,7 @@ import jakarta.transaction.Transactional
 import io.micronaut.security.annotation.Secured
 import org.slf4j.LoggerFactory
 import java.time.Instant
+import java.util.UUID
 
 @Controller("/api/scan")
 @Secured("ROLE_WORKER","ROLE_BOSS")
@@ -86,9 +87,9 @@ open class ScanController(
             val signedJWT = com.nimbusds.jwt.SignedJWT.parse(request.challenge)
             val claims = signedJWT.jwtClaimsSet
             Triple(
-                (claims.getClaim("org") as Number).toLong(),
+                UUID.fromString(claims.getClaim("org") as String),
                 claims.getClaim("dev") as String,
-                (claims.getClaim("cp") as Number).toLong()
+                UUID.fromString(claims.getClaim("cp") as String)
             )
         } catch (_: Exception) {
             throw HttpStatusException(HttpStatus.BAD_REQUEST, "Invalid challenge format")

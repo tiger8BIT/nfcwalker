@@ -2,11 +2,12 @@ package ge.tiger8bit.dto
 
 import io.micronaut.serde.annotation.Serdeable
 import java.math.BigDecimal
+import java.util.UUID
 
 @Serdeable
 data class CreateCheckpointRequest(
-    val organizationId: Long,
-    val siteId: Long,
+    val organizationId: UUID,
+    val siteId: UUID,
     val code: String,
     val geoLat: BigDecimal? = null,
     val geoLon: BigDecimal? = null,
@@ -15,9 +16,9 @@ data class CreateCheckpointRequest(
 
 @Serdeable
 data class CheckpointResponse(
-    val id: Long,
-    val organizationId: Long,
-    val siteId: Long,
+    val id: UUID,
+    val organizationId: UUID,
+    val siteId: UUID,
     val code: String,
     val geoLat: BigDecimal? = null,
     val geoLon: BigDecimal? = null,
@@ -26,22 +27,22 @@ data class CheckpointResponse(
 
 @Serdeable
 data class CreateRouteRequest(
-    val organizationId: Long,
-    val siteId: Long,
+    val organizationId: UUID,
+    val siteId: UUID,
     val name: String
 )
 
 @Serdeable
 data class RouteResponse(
-    val id: Long,
-    val organizationId: Long,
-    val siteId: Long,
+    val id: UUID,
+    val organizationId: UUID,
+    val siteId: UUID,
     val name: String
 )
 
 @Serdeable
 data class AddRouteCheckpointRequest(
-    val checkpointId: Long,
+    val checkpointId: UUID,
     val seq: Int,
     val minOffsetSec: Int = 0,
     val maxOffsetSec: Int = 3600
@@ -54,15 +55,15 @@ data class BulkAddRouteCheckpointsRequest(
 
 @Serdeable
 data class StartScanRequest(
-    val organizationId: Long,
+    val organizationId: UUID,
     val deviceId: String,
     val checkpointCode: String
 )
 
 @Serdeable
 data class ScanPolicy(
-    val runId: Long,
-    val checkpointId: Long,
+    val runId: UUID,
+    val checkpointId: UUID,
     val order: Int,
     val timeWindow: TimeWindow,
     val geo: GeoConstraint?
@@ -98,7 +99,7 @@ data class FinishScanRequest(
 
 @Serdeable
 data class FinishScanResponse(
-    val eventId: Long,
+    val eventId: UUID,
     val verdict: String
 )
 

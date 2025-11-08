@@ -1,14 +1,15 @@
 -- Core schema for NFC Patrol System
+-- All IDs use UUID for better distributed system support
 
 CREATE TABLE organizations (
-    id BIGSERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(200) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE sites (
-    id BIGSERIAL PRIMARY KEY,
-    organization_id BIGINT NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL,
     name VARCHAR(200) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_sites_organization FOREIGN KEY (organization_id) REFERENCES organizations(id)
@@ -17,9 +18,9 @@ CREATE TABLE sites (
 CREATE INDEX idx_sites_organization_id ON sites(organization_id);
 
 CREATE TABLE checkpoints (
-    id BIGSERIAL PRIMARY KEY,
-    organization_id BIGINT NOT NULL,
-    site_id BIGINT NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL,
+    site_id UUID NOT NULL,
     code VARCHAR(100) NOT NULL UNIQUE,
     geo_lat NUMERIC(10, 7),
     geo_lon NUMERIC(10, 7),
@@ -34,9 +35,9 @@ CREATE INDEX idx_checkpoints_site_id ON checkpoints(site_id);
 CREATE INDEX idx_checkpoints_code ON checkpoints(code);
 
 CREATE TABLE patrol_routes (
-    id BIGSERIAL PRIMARY KEY,
-    organization_id BIGINT NOT NULL,
-    site_id BIGINT NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL,
+    site_id UUID NOT NULL,
     name VARCHAR(200) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_patrol_routes_organization FOREIGN KEY (organization_id) REFERENCES organizations(id),
@@ -47,8 +48,8 @@ CREATE INDEX idx_patrol_routes_organization_id ON patrol_routes(organization_id)
 CREATE INDEX idx_patrol_routes_site_id ON patrol_routes(site_id);
 
 CREATE TABLE patrol_route_checkpoints (
-    route_id BIGINT NOT NULL,
-    checkpoint_id BIGINT NOT NULL,
+    route_id UUID NOT NULL,
+    checkpoint_id UUID NOT NULL,
     seq INT NOT NULL,
     min_offset_sec INT NOT NULL DEFAULT 0,
     max_offset_sec INT NOT NULL DEFAULT 3600,
@@ -60,9 +61,9 @@ CREATE TABLE patrol_route_checkpoints (
 CREATE INDEX idx_prc_route_id ON patrol_route_checkpoints(route_id);
 
 CREATE TABLE patrol_runs (
-    id BIGSERIAL PRIMARY KEY,
-    route_id BIGINT NOT NULL,
-    organization_id BIGINT NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    route_id UUID NOT NULL,
+    organization_id UUID NOT NULL,
     planned_start TIMESTAMP NOT NULL,
     planned_end TIMESTAMP NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
@@ -76,9 +77,9 @@ CREATE INDEX idx_patrol_runs_organization_id ON patrol_runs(organization_id);
 CREATE INDEX idx_patrol_runs_status ON patrol_runs(status);
 
 CREATE TABLE patrol_scan_events (
-    id BIGSERIAL PRIMARY KEY,
-    patrol_run_id BIGINT NOT NULL,
-    checkpoint_id BIGINT NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patrol_run_id UUID NOT NULL,
+    checkpoint_id UUID NOT NULL,
     user_id VARCHAR(200) NOT NULL,
     scanned_at TIMESTAMP NOT NULL,
     lat NUMERIC(10, 7),

@@ -4,6 +4,7 @@ import ge.tiger8bit.domain.*
 import ge.tiger8bit.repository.*
 import java.math.BigDecimal
 import java.time.Instant
+import java.util.UUID
 
 object TestFixtures {
     fun cleanupChallengeUsed(challengeUsedRepository: ChallengeUsedRepository) {
@@ -29,8 +30,8 @@ object TestFixtures {
 
     fun createCheckpoint(
         checkpointRepository: CheckpointRepository,
-        organizationId: Long,
-        siteId: Long,
+        organizationId: UUID,
+        siteId: UUID,
         code: String = "CP-AUTO-001",
         geoLat: BigDecimal? = null,
         geoLon: BigDecimal? = null,
@@ -73,8 +74,8 @@ object TestFixtures {
 
     fun createPatrolRun(
         patrolRunRepository: PatrolRunRepository,
-        routeId: Long,
-        organizationId: Long,
+        routeId: UUID,
+        organizationId: UUID,
         status: String = "in_progress"
     ): PatrolRun {
         val run = patrolRunRepository.save(

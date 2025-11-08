@@ -26,7 +26,7 @@ open class ChallengeService(
 ) {
     private val logger = LoggerFactory.getLogger(ChallengeService::class.java)
 
-    fun issue(orgId: Long, deviceId: String, checkpointId: Long, ttl: Long = ttlSeconds): String {
+    fun issue(orgId: UUID, deviceId: String, checkpointId: UUID, ttl: Long = ttlSeconds): String {
         val now = Instant.now()
         val exp = now.plusSeconds(ttl)
         val jti = UUID.randomUUID().toString()
@@ -35,9 +35,9 @@ open class ChallengeService(
             .jwtID(jti)
             .issueTime(Date.from(now))
             .expirationTime(Date.from(exp))
-            .claim("org", orgId)
+            .claim("org", orgId.toString())
             .claim("dev", deviceId)
-            .claim("cp", checkpointId)
+            .claim("cp", checkpointId.toString())
             .build()
 
         val signedJWT = SignedJWT(
@@ -54,9 +54,9 @@ open class ChallengeService(
     @Transactional(value = TxType.REQUIRES_NEW)
     open fun validateAndConsume(
         jws: String,
-        expectedOrg: Long,
+        expectedOrg: UUID,
         expectedDev: String,
-        expectedCp: Long
+        expectedCp: UUID
     ): ValidationResult {
         try {
             val signedJWT = SignedJWT.parse(jws)
@@ -73,17 +73,27 @@ open class ChallengeService(
                 return ValidationResult.Invalid("Challenge expired")
             }
 
-            val org = claims.getClaim("org") as? Number ?: return ValidationResult.Invalid("Missing org claim")
-            val dev = claims.getClaim("dev") as? String ?: return ValidationResult.Invalid("Missing dev claim")
-            val cp = claims.getClaim("cp") as? Number ?: return ValidationResult.Invalid("Missing cp claim")
+            val org = try {
+                UUID.fromString(claims.getClaim("org") as String)
+            } catch (_: Exception) {
+                return ValidationResult.Invalid("Invalid org claim")
+            }
 
-            if (org.toLong() != expectedOrg) {
+            val dev = claims.getClaim("dev") as? String ?: return ValidationResult.Invalid("Missing dev claim")
+
+            val cp = try {
+                UUID.fromString(claims.getClaim("cp") as String)
+            } catch (_: Exception) {
+                return ValidationResult.Invalid("Invalid cp claim")
+            }
+
+            if (org != expectedOrg) {
                 return ValidationResult.Invalid("Organization mismatch")
             }
             if (dev != expectedDev) {
                 return ValidationResult.Invalid("Device mismatch")
             }
-            if (cp.toLong() != expectedCp) {
+            if (cp != expectedCp) {
                 return ValidationResult.Invalid("Checkpoint mismatch")
             }
 

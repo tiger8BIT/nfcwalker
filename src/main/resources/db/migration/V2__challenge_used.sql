@@ -6,7 +6,7 @@ CREATE TABLE challenge_used (
     expires_at TIMESTAMP NOT NULL,
     used_at TIMESTAMP NOT NULL DEFAULT NOW(),
     device_id VARCHAR(200) NOT NULL,
-    checkpoint_id BIGINT NOT NULL,
+    checkpoint_id UUID NOT NULL,
     CONSTRAINT fk_challenge_used_checkpoint FOREIGN KEY (checkpoint_id) REFERENCES checkpoints(id)
 );
 

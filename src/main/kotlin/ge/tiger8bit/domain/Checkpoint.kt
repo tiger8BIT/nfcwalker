@@ -4,6 +4,7 @@ import io.micronaut.serde.annotation.Serdeable
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.Instant
+import java.util.UUID
 
 @Entity
 @Table(
@@ -17,14 +18,14 @@ import java.time.Instant
 @Serdeable
 class Checkpoint(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var id: Long? = null,
+    @GeneratedValue(strategy = GenerationType.UUID)
+    var id: UUID? = null,
 
     @Column(name = "organization_id", nullable = false)
-    var organizationId: Long = 0,
+    var organizationId: UUID = UUID(0, 0),
 
     @Column(name = "site_id", nullable = false)
-    var siteId: Long = 0,
+    var siteId: UUID = UUID(0, 0),
 
     @Column(nullable = false, unique = true, length = 100)
     var code: String = "",
@@ -42,8 +43,8 @@ class Checkpoint(
     var createdAt: Instant = Instant.now()
 ) {
     constructor(
-        organizationId: Long,
-        siteId: Long,
+        organizationId: UUID,
+        siteId: UUID,
         code: String,
         geoLat: BigDecimal? = null,
         geoLon: BigDecimal? = null,

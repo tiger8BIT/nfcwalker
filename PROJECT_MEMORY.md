@@ -8,6 +8,7 @@ This file is for the assistant's fast recall. Keep it **concise**, **actionable*
 - Language / Runtime: Kotlin (1.9.25), Java 21 (mandatory)
 - Framework: Micronaut 4.x (HTTP server + DI + security)
 - Persistence: PostgreSQL + Hibernate (Micronaut Data JPA) + Flyway migrations (V1, V2 existing)
+- **ID Strategy: UUID (all entities use `GenerationType.UUID` with `gen_random_uuid()` default in DB)**
 - Security Model: HS256 challenge-response (JWS) + replay prevention via `challenge_used` (PK = jti)
 - Deployment Entry Points:
   - Local / Netty: `ge.tiger8bit.ApplicationKt`
@@ -112,6 +113,7 @@ When making a significant change:
 ## 14. Recent Changes Log (Short Rolling Window)
 | Date | Change |
 |------|--------|
+| 2025-11-08 | **All IDs converted from BIGSERIAL/Long to UUID** – All 8 entities now use `GenerationType.UUID`; DB migrations V1 & V2 updated; ready for distributed deployments |
 | 2025-11-08 | Refactored project memory into AI-friendly structured format |
 
 ---

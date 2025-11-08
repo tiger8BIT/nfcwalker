@@ -3,6 +3,7 @@ package ge.tiger8bit.domain
 import io.micronaut.serde.annotation.Serdeable
 import jakarta.persistence.*
 import java.time.Instant
+import java.util.UUID
 
 @Entity
 @Table(
@@ -16,14 +17,14 @@ import java.time.Instant
 @Serdeable
 class PatrolRun(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var id: Long? = null,
+    @GeneratedValue(strategy = GenerationType.UUID)
+    var id: UUID? = null,
 
     @Column(name = "route_id", nullable = false)
-    var routeId: Long = 0,
+    var routeId: UUID = UUID(0, 0),
 
     @Column(name = "organization_id", nullable = false)
-    var organizationId: Long = 0,
+    var organizationId: UUID = UUID(0, 0),
 
     @Column(name = "planned_start", nullable = false)
     var plannedStart: Instant = Instant.now(),
@@ -37,7 +38,7 @@ class PatrolRun(
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now()
 ) {
-    constructor(routeId: Long, organizationId: Long, plannedStart: Instant, plannedEnd: Instant, status: String)
+    constructor(routeId: UUID, organizationId: UUID, plannedStart: Instant, plannedEnd: Instant, status: String)
         : this(null, routeId, organizationId, plannedStart, plannedEnd, status, Instant.now())
 }
 

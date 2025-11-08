@@ -3,6 +3,7 @@ package ge.tiger8bit.domain
 import io.micronaut.serde.annotation.Serdeable
 import jakarta.persistence.*
 import java.time.Instant
+import java.util.UUID
 
 @Entity
 @Table(
@@ -30,6 +31,6 @@ class ChallengeUsed(
     var deviceId: String = "",
 
     @Column(name = "checkpoint_id", nullable = false)
-    var checkpointId: Long = 0
+    var checkpointId: UUID = UUID(0, 0)
 )
 

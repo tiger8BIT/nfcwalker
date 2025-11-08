@@ -3,14 +3,15 @@ package ge.tiger8bit.domain
 import io.micronaut.serde.annotation.Serdeable
 import jakarta.persistence.*
 import java.time.Instant
+import java.util.UUID
 
 @Entity
 @Table(name = "organizations")
 @Serdeable
 class Organization(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var id: Long? = null,
+    @GeneratedValue(strategy = GenerationType.UUID)
+    var id: UUID? = null,
 
     @Column(nullable = false, length = 200)
     var name: String = "",

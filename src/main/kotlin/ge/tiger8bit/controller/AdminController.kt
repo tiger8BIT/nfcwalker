@@ -10,6 +10,7 @@ import ge.tiger8bit.repository.PatrolRouteRepository
 import io.micronaut.http.annotation.*
 import jakarta.transaction.Transactional
 import io.micronaut.security.annotation.Secured
+import java.util.UUID
 
 @Controller("/api/admin")
 @Secured("ROLE_BOSS") // only bosses can call admin endpoints
@@ -48,7 +49,7 @@ open class AdminController(
     }
 
     @Get("/checkpoints")
-    fun listCheckpoints(@QueryValue siteId: Long): List<CheckpointResponse> {
+    fun listCheckpoints(@QueryValue siteId: UUID): List<CheckpointResponse> {
         return checkpointRepository.findBySiteId(siteId).map { checkpoint ->
             CheckpointResponse(
                 id = checkpoint.id!!,
@@ -84,7 +85,7 @@ open class AdminController(
     @Post("/routes/{id}/points")
     @Transactional
     open fun addCheckpointsToRoute(
-        @PathVariable id: Long,
+        @PathVariable id: UUID,
         @Body request: BulkAddRouteCheckpointsRequest
     ): Map<String, Any> {
         val checkpoints = request.checkpoints.map { cp ->
