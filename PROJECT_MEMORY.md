@@ -136,12 +136,13 @@ When making a significant change:
 
 ---
 ## 14. Recent Changes Log (Short Rolling Window)
-| Date | Change |
-|------|--------|
+| Date       | Change                                                                                                                                                                                                                                                                                                                |
+|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 2025-11-09 | **Test isolation fixed** – Each test creates unique Organization/Site/Checkpoint with UUID. Fixed PatrolRouteCheckpoint creation to pass IDs to constructor (not apply block) to avoid Hibernate NonUniqueObjectException with zero UUID defaults. Removed unnecessary Gradle parallel config that was causing hangs. |
-| 2025-11-09 | **Comprehensive logging added** – All app logic covered with SLF4J: DEBUG for development, INFO for business events, WARN for exceptions. Replay attacks, validations, and business operations tracked. |
-| 2025-11-09 | **All IDs converted to UUID** – All 8 entities use `GenerationType.UUID`; DB migrations V1 & V2 updated; ready for distributed deployments. |
-| 2025-11-08 | **Code refactoring completed** – AdminController: extracted mapping functions (DRY). ScanController: extracted helpers (buildScanPolicy, parseChallenge, findActivePatrolRun). |
+| 2025-11-09 | **Comprehensive logging added** – All app logic covered with SLF4J: DEBUG for development, INFO for business events, WARN for exceptions. Replay attacks, validations, and business operations tracked.                                                                                                               |
+| 2025-11-09 | **All IDs converted to UUID** – All 8 entities use `GenerationType.UUID`; DB migrations V1 & V2 updated; ready for distributed deployments.                                                                                                                                                                           |
+| 2025-11-08 | **Code refactoring completed** – AdminController: extracted mapping functions (DRY). ScanController: extracted helpers (buildScanPolicy, parseChallenge, findActivePatrolRun).                                                                                                                                        |
+| 2025-11-09 | **Kotest parallel config fixed** – Correct types (Int?) for concurrentSpecs/concurrentTests with @OptIn(ExperimentalKotest). Added note to avoid Boolean misuse (was causing red highlight).                                                                                                                          |
 
 ---
 ### Usage Notes (For Assistant)

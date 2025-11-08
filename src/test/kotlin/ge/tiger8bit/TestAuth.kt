@@ -3,15 +3,15 @@ package ge.tiger8bit
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.MACSigner
 import com.nimbusds.jose.crypto.MACVerifier
-import com.nimbusds.jwt.SignedJWT
 import com.nimbusds.jwt.JWTClaimsSet
+import com.nimbusds.jwt.SignedJWT
 import io.micronaut.http.MutableHttpRequest
 import java.util.*
 
 object TestAuth {
     // Use the same test secret as in application-test.yml. Prefer env JWT_SECRET
-    // when present (CI can override); otherwise use a 32+ byte test secret.
-    private val rawSecret: String = System.getenv("JWT_SECRET") ?: "test-jwt-secret-32-bytes-long-0001"
+    // when present (CI can override); otherwise use the exact 64-char hex secret from application-test.yml.
+    private val rawSecret: String = System.getenv("JWT_SECRET") ?: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
     private val signingKeyBytes: ByteArray by lazy { rawSecret.toByteArray() }
 
