@@ -78,9 +78,19 @@ Code quality: All errors fixed ✅
 6. ✅ Google Cloud Functions API dependency added
 
 ## Test Structure
-- Uses `@MicronautTest` with embedded server
+- Uses `@MicronautTest` with embedded server + Kotest (StringSpec style)
 - Testcontainers PostgreSQL (requires Docker running)
-- Tests: create checkpoint, list, create route, full scan flow, replay attack detection
+- Tests use JWT authentication with HS256 (min 256-bit secret required)
+- Important: Kotest tests are NOT isolated by default (SingleInstance mode)
+  - Each test case can reuse state from previous ones
+  - For independent tests, use separate test classes or explicit setup
+  - Extract common fixtures into base test class or @TestConfiguration bean
+- Test issues fixed:
+  - JWT secret must be 32 bytes+ (app.challenge.secret in config)
+  - Authentication setup needed in base test config
+  - Foreign key constraints require proper data setup order
+  - Duplicate challenge prevention (409 Conflict on replay)
+- Common test setup should be extracted to avoid duplication
 
 ## Deployment Entry Points
 1. **AWS Lambda**: `ge.tiger8bit.LambdaHandler`
