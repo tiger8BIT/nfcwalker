@@ -53,6 +53,46 @@ data class BulkAddRouteCheckpointsRequest(
     val checkpoints: List<AddRouteCheckpointRequest>
 )
 
+// ===== Organization DTOs =====
+
+@Serdeable
+data class CreateOrganizationRequest(
+    val name: String
+)
+
+@Serdeable
+data class UpdateOrganizationRequest(
+    val name: String
+)
+
+@Serdeable
+data class OrganizationResponse(
+    val id: UUID,
+    val name: String,
+    val createdAt: java.time.Instant
+)
+
+// ===== Site DTOs =====
+
+@Serdeable
+data class CreateSiteRequest(
+    val organizationId: UUID,
+    val name: String
+)
+
+@Serdeable
+data class UpdateSiteRequest(
+    val name: String
+)
+
+@Serdeable
+data class SiteResponse(
+    val id: UUID,
+    val organizationId: UUID,
+    val name: String,
+    val createdAt: java.time.Instant
+)
+
 @Serdeable
 data class StartScanRequest(
     val organizationId: UUID,

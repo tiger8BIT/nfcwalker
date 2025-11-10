@@ -1,5 +1,5 @@
 # Project Memory: NFC Walker Patrol System
-_Last updated: 2025-11-09_
+_Last updated: 2025-11-11_
 
 This file is for the assistant's fast recall. Keep it **concise**, **actionable**, and **current**. Avoid marketing fluff or duplication of the README. Update when architecture, invariants, or active tasks change.
 
@@ -9,143 +9,211 @@ This file is for the assistant's fast recall. Keep it **concise**, **actionable*
 - Framework: Micronaut 4.x (HTTP server + DI + security)
 - Persistence: PostgreSQL + Hibernate (Micronaut Data JPA) + Flyway migrations (V1, V2 existing)
 - **ID Strategy: UUID (all entities use `GenerationType.UUID` with `gen_random_uuid()` default in DB)**
-- Security Model: HS256 challenge-response (JWS) + replay prevention via `challenge_used` (PK = jti)
-- Deployment Entry Points:
-  - Local / Netty: `ge.tiger8bit.ApplicationKt`
-  - AWS Lambda: `ge.tiger8bit.LambdaHandler`
-  - GCP Function (HTTP): `ge.tiger8bit.GcpHttpFunction`
-- Domain Entities (8): Organization, Site, Checkpoint, PatrolRoute, PatrolRouteCheckpoint, PatrolRun, PatrolScanEvent, ChallengeUsed
-- Primary DB connection pool small (Hikari) for serverless friendliness (max ~3)
-
-## 2. Current State (Mutable Snapshot)
-- Build: Compiles with Java 21
-- Tests: Kotest-based integration tests; each creates unique data with UUID. Independent & can run in parallel.
-  - Some integration tests depend on Docker / Testcontainers (PostgreSQL). If Docker down -> failures.
-  - **Note: Terminal may hang on gradle commands; ensure Docker is running and ports are free.**
-- Known runtime validation: HS256 secret must be ≥ 32 bytes (256 bits) or Nimbus throws `KeyLengthException`.
-- Replay logic returns 409 (expected) but may currently surface 500 if not caught (verify error mapping).
-
-## 3. Active / Pending Tasks
-Use checkboxes; keep list short. Remove when done.
-- [x] ~~Switch test isolation away from stateful ordering~~ – Each test creates unique data with UUID. Tests are now independent & safe to run in parallel (Kotest handles parallelism internally).
-- [ ] Ensure duplicate challenge (replay) returns 409 not 500 – map `ConstraintViolationException` properly
-- [ ] Add geo-fencing validation (lat/lon/radius) in finish scan flow
-- [ ] Enforce route sequence & optional time windows
-
-## 4. Risks / Gotchas
-| Area | Issue | Mitigation |
-|------|-------|-----------|
-| Secrets | Too-short HS256 secret | Enforce length check at startup |
-| Tests | Rely on ordered state (SingleInstance Kotest) | Refactor to explicit fixtures |
-| Replay Handling | DB constraint surfaces 500 | Convert to 409 via exception handler |
-| FK Errors | Missing Org/Site before creating Checkpoint | Provide seed util / fixture |
-| AOP | Final methods block interceptors | Keep services `open` if advice needed |
-| Code Quality | Copy-paste DTO mappings | Use extension functions on domain models |
-
-## 5. Commands (Generic)
-
-**Build & Test (with Java 21):**
-```bash
-# Build (skip tests)
-export JAVA_HOME=$(/usr/libexec/java_home -v 21) && ./gradlew build -x test
-
-# Full build with tests (needs Docker running)
-export JAVA_HOME=$(/usr/libexec/java_home -v 21) && ./gradlew build
-
-# Run tests only
-export JAVA_HOME=$(/usr/libexec/java_home -v 21) && ./gradlew test
-
-# Run specific test class
-export JAVA_HOME=$(/usr/libexec/java_home -v 21) && ./gradlew test --tests "ge.tiger8bit.NfcwalkerTest"
-
-# Run tests with detailed output
-export JAVA_HOME=$(/usr/libexec/java_home -v 21) && ./gradlew test --info
-
-# Clean build (nuke cache)
-export JAVA_HOME=$(/usr/libexec/java_home -v 21) && ./gradlew clean build
-```
-
-**Server & Development (with Java 21):**
-```bash
-# Run local server on :8080
-export JAVA_HOME=$(/usr/libexec/java_home -v 21) && ./gradlew run
-
-# Build & run shadow JAR
-export JAVA_HOME=$(/usr/libexec/java_home -v 21) && ./gradlew shadowJar
-java -jar build/libs/nfcwalker-*.jar
-```
-
-**Troubleshooting:**
-```bash
-# If gradle hangs: ensure Docker is running & no port conflicts
-ps aux | grep gradlew
-
-# Force kill if needed
-pkill -9 java
-```
-
-## 6. Configuration Keys (Env-driven)
-| Key | Purpose | Notes |
-|-----|---------|-------|
-| JDBC_URL | PostgreSQL URL | Default local port 5432 |
-| JDBC_USER / JDBC_PASSWORD | DB credentials | Use non-prod creds locally |
-| APP_CHALLENGE_SECRET | HS256 signing for challenges | ≥ 32 bytes required |
-| JWT_SECRET | (Future) auth / admin token signing | Keep same entropy policy |
-| MICRONAUT_ENV | Environment profile | dev / test / prod |
-
-## 7. Domain Cheat Sheet
-- `ChallengeUsed.jti`: uniqueness = replay prevention
-- `PatrolScanEvent`: attaches scan outcome; depends on valid challenge
-- `PatrolRouteCheckpoint`: sequence + optional time windows (TODO validation)
-
-## 8. Testing Strategy
-- Style: Kotest StringSpec + `@MicronautTest`
-- Isolation: **FIXED** – Each test creates completely unique data (Organization/Site/Checkpoint/Route) with UUID. No state carry-over. Tests are independent & safe to run in parallel.
-- Needed Fixtures: `TestFixtures.seedOrgAndSite()` returns (Org, Site) pair; checkpoints created via API in each test
-- Replay Test: Use same challenge twice → expect HTTP 409 (assert mapping)
-
-## 9. Error Mapping TODO
-Implement / confirm `@Error` or global exception handler to translate:
-- `ConstraintViolationException` on duplicate JTI → 409 CONFLICT
-- FK violation when missing parent → 400 BAD_REQUEST (custom message) instead of 500
-
-## 10. Future Enhancements (Not Yet Started)
-- External auth integration (Google-based identity / roles: admin vs worker)
-- Geo-fence evaluation (distance calc) on finish
-- Patrol route adherence scoring / missed checkpoints
-- Observability: structured logging + tracing ids
-
-## 11. Non-Goals (For Now)
-- Multi-tenant sharding
-- Real-time websocket push
-- Complex RBAC beyond admin/worker prototype
-
-## 12. Update Procedure
-When making a significant change:
-1. Adjust Invariants (section 1) if architecture shifts
-2. Refresh Current State + Active Tasks
-3. Prune stale tasks / risks
-4. Keep this file < ~250 lines
-
-## 13. Quick Validation Checklist (Pre-Deploy)
-- [ ] All migrations applied & repeatable scripts clean
-- [ ] Challenge secret length OK
-- [ ] Replay duplicate returns 409
-- [ ] Health endpoint (if any) responds 200
-- [ ] Build with tests green under Docker
+- Security: JWT authentication with role-based access control
+- Anti-replay: Challenge-response mechanism for NFC scanning
 
 ---
-## 14. Recent Changes Log (Short Rolling Window)
-| Date       | Change                                                                                                                                                                                                                                                                                                                |
-|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 2025-11-09 | **Test isolation fixed** – Each test creates unique Organization/Site/Checkpoint with UUID. Fixed PatrolRouteCheckpoint creation to pass IDs to constructor (not apply block) to avoid Hibernate NonUniqueObjectException with zero UUID defaults. Removed unnecessary Gradle parallel config that was causing hangs. |
-| 2025-11-09 | **Comprehensive logging added** – All app logic covered with SLF4J: DEBUG for development, INFO for business events, WARN for exceptions. Replay attacks, validations, and business operations tracked.                                                                                                               |
-| 2025-11-09 | **All IDs converted to UUID** – All 8 entities use `GenerationType.UUID`; DB migrations V1 & V2 updated; ready for distributed deployments.                                                                                                                                                                           |
-| 2025-11-08 | **Code refactoring completed** – AdminController: extracted mapping functions (DRY). ScanController: extracted helpers (buildScanPolicy, parseChallenge, findActivePatrolRun).                                                                                                                                        |
-| 2025-11-09 | **Kotest parallel config fixed** – Correct types (Int?) for concurrentSpecs/concurrentTests with @OptIn(ExperimentalKotest). Added note to avoid Boolean misuse (was causing red highlight).                                                                                                                          |
+## 2. Domain Model & Hierarchy
+
+```
+Organization (Организация - охранная компания)
+    └── Site (Площадка/Объект - конкретное место охраны: склад, офис, территория)
+        ├── Checkpoint (Контрольная точка - физическая NFC метка)
+        └── PatrolRoute (Маршрут патрулирования - набор точек в порядке обхода)
+            └── PatrolRouteCheckpoint (Связь точки с маршрутом + временные ограничения)
+                └── PatrolRun (Запуск патрулирования - конкретный обход)
+                    └── PatrolScanEvent (Событие сканирования NFC метки охранником)
+```
+
+### Key Entities
+
+1. **Organization** - организация (верхний уровень иерархии)
+2. **Site** - охраняемый объект/площадка (принадлежит организации)
+   - `siteId` = UUID конкретного объекта
+3. **Checkpoint** - контрольная точка с NFC меткой
+   - Имеет уникальный `code` (NFC/QR)
+   - Опционально: GPS координаты (`geoLat`, `geoLon`, `radiusM`)
+4. **PatrolRoute** - маршрут (принадлежит site)
+5. **PatrolRouteCheckpoint** - точка в маршруте
+   - `seq` - порядковый номер
+   - `minOffsetSec`, `maxOffsetSec` - временные ограничения между точками
+6. **PatrolRun** - запуск патрулирования (создается при первом scan)
+7. **PatrolScanEvent** - факт сканирования (время, GPS, userId)
+8. **ChallengeUsed** - использованные challenge (защита от replay-атак)
 
 ---
-### Usage Notes (For Assistant)
-- Prefer this file for context; avoid scraping full code unless necessary.
-- Do not echo absolute local paths back to user unless asked.
-- When user asks "what next?" use Active Tasks + Risks to propose actions.
+## 3. Role-Based Access Control (RBAC)
+
+### Роли и их назначение
+
+**ROLE_APP_OWNER** - владелец приложения / суперадмин
+- Управление организациями (CRUD)
+- Полный доступ ко всем данным
+- Контроллер: `OrganizationController` (`/api/organizations`)
+
+**ROLE_BOSS** - менеджер организации / диспетчер
+- Управление объектами (sites) в своей организации
+- Создание/редактирование checkpoints и routes
+- Просмотр отчетов по патрулированию
+- Контроллеры: 
+  - `SiteController` (`/api/sites`)
+  - `AdminController` (`/api/admin`)
+  - `ScanController` (`/api/scan`) - может сканировать
+
+**ROLE_WORKER** - охранник / патрульный
+- Только сканирование NFC меток
+- Выполнение патрулирования
+- Контроллер: `ScanController` (`/api/scan`)
+
+### API Endpoints по ролям
+
+```
+ROLE_APP_OWNER only:
+  POST   /api/organizations              - создать организацию
+  GET    /api/organizations              - список всех организаций
+  GET    /api/organizations/{id}         - получить организацию
+  PUT    /api/organizations/{id}         - обновить организацию
+  DELETE /api/organizations/{id}         - удалить организацию
+
+ROLE_BOSS:
+  POST   /api/sites                      - создать объект
+  GET    /api/sites?organizationId=UUID  - список объектов организации
+  GET    /api/sites/{id}                 - получить объект
+  PUT    /api/sites/{id}                 - обновить объект
+  DELETE /api/sites/{id}                 - удалить объект
+  
+  POST   /api/admin/checkpoints          - создать контрольную точку
+  GET    /api/admin/checkpoints?siteId=UUID - список точек на объекте
+  
+  POST   /api/admin/routes               - создать маршрут
+  POST   /api/admin/routes/{id}/points   - добавить точки в маршрут
+
+ROLE_WORKER + ROLE_BOSS:
+  POST   /api/scan/start                 - начать сканирование (получить challenge)
+  POST   /api/scan/finish                - завершить сканирование
+```
+
+---
+## 4. Security & Anti-Replay Protection
+
+### JWT Authentication
+- Токены содержат `subject` (userId) и `roles`
+- Роли проверяются через `@Secured` аннотации на контроллерах
+
+### Challenge-Response для сканирования
+1. Клиент сканирует NFC → `POST /api/scan/start` с `checkpointCode`
+2. Сервер генерирует уникальный `challenge` (UUID)
+3. Сервер возвращает `challenge` + `policy` (правила сканирования)
+4. Клиент подтверждает → `POST /api/scan/finish` с `challenge` + данными
+5. Сервер проверяет:
+   - Challenge не использован ранее (таблица `challenge_used`)
+   - Временные ограничения соблюдены
+   - Геолокация корректна (если задана)
+6. Сервер сохраняет событие в `patrol_scan_events`
+7. Challenge помечается как использованный → запись в `challenge_used`
+
+**Защита:** нельзя переиспользовать challenge, нельзя подделать сканирование
+
+---
+## 5. Controllers
+
+| Controller | Path | Role | Purpose |
+|------------|------|------|---------|
+| OrganizationController | /api/organizations | APP_OWNER | CRUD организаций |
+| SiteController | /api/sites | BOSS | CRUD площадок |
+| AdminController | /api/admin | BOSS | CRUD checkpoints & routes |
+| ScanController | /api/scan | WORKER, BOSS | Сканирование NFC |
+
+---
+## 6. Процесс патрулирования
+
+1. Охранник начинает обход маршрута
+2. Подходит к контрольной точке, сканирует NFC метку
+3. **START**: `POST /api/scan/start` с кодом метки
+   - Сервер находит checkpoint по коду
+   - Определяет маршрут и текущий PatrolRun
+   - Генерирует challenge
+   - Возвращает challenge + policy (временные окна, GPS ограничения)
+4. **FINISH**: `POST /api/scan/finish` с challenge + userId + timestamp + GPS
+   - Проверка challenge (не использован)
+   - Проверка времени (в пределах временного окна)
+   - Проверка GPS (если задана)
+   - Сохранение события сканирования
+   - Пометка challenge как использованный
+5. Охранник переходит к следующей точке маршрута
+
+---
+## 7. Database Schema (PostgreSQL)
+
+Tables:
+- `organizations` - организации
+- `sites` - объекты/площадки
+- `checkpoints` - контрольные точки (NFC метки)
+- `patrol_routes` - маршруты
+- `patrol_route_checkpoints` - связь маршрут-точка (M:N + доп.данные)
+- `patrol_runs` - запуски патрулирования
+- `patrol_scan_events` - события сканирования
+- `challenge_used` - использованные challenge (anti-replay)
+
+All IDs: UUID with `gen_random_uuid()` default
+
+Migrations:
+- V1__core.sql - основные таблицы
+- V2__challenge_used.sql - таблица защиты от replay
+
+---
+## 8. Tech Stack
+
+- **Kotlin** 1.9.25
+- **Micronaut** 4.x
+- **PostgreSQL** (with UUIDs)
+- **Hibernate / Micronaut Data JPA**
+- **Flyway** migrations
+- **JWT** authentication
+- **Gradle** build tool
+
+---
+## 9. Testing
+
+- Unit tests: спецификации в `src/test/kotlin/ge/tiger8bit/spec/`
+- Test fixtures: `TestFixtures.kt`, `TestAuth.kt`
+- Test roles: `generateBossToken()`, `generateWorkerToken()`
+
+---
+## 10. Current State (2025-11-11)
+
+### ✅ Implemented
+- Core domain model (Organization → Site → Checkpoint → Route → Run → Event)
+- JWT authentication with roles
+- Challenge-response anti-replay protection
+- Controllers:
+  - ✅ ScanController (WORKER, BOSS)
+  - ✅ AdminController (BOSS) - checkpoints, routes
+  - ✅ SiteController (BOSS) - sites management
+  - ✅ OrganizationController (APP_OWNER) - organizations management
+- DTOs for all entities
+- Database migrations (V1, V2)
+- Repositories (JPA)
+
+### 📋 Design Decisions
+- **siteId** - это UUID конкретного охраняемого объекта (площадки)
+- **ROLE_APP_OWNER** управляет организациями
+- **ROLE_BOSS** управляет всем внутри организации (sites, checkpoints, routes)
+- **ROLE_WORKER** только сканирует
+- Все entity ID - UUID для distributed systems
+
+### 🔄 Next Steps (if needed)
+- [ ] Добавить тесты для новых контроллеров (SiteController, OrganizationController)
+- [ ] Реализовать фильтрацию данных по organizationId для BOSS (чтобы не видел чужие данные)
+- [ ] Добавить отчеты по патрулированию
+- [ ] Websockets для real-time мониторинга (опционально)
+
+---
+## 11. Code Conventions
+
+- Логирование: используем `getLogger()` extension из `LoggerExt.kt`
+- Транзакции: `@Transactional` на методах, изменяющих данные
+- Response helpers: extension функции `toResponse()` внутри контроллеров
+- DTOs: все в `dto/Dtos.kt` с аннотацией `@Serdeable`
+- Репозитории: интерфейсы в `repository/`, наследуют `JpaRepository<Entity, UUID>`
+

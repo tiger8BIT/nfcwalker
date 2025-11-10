@@ -46,6 +46,7 @@ object TestAuth {
     // Convenience helpers for common test roles
     fun generateBossToken(subject: String = "boss-user") = generateToken(subject, listOf("ROLE_BOSS"))
     fun generateWorkerToken(subject: String = "worker-user") = generateToken(subject, listOf("ROLE_WORKER"))
+    fun generateAppOwnerToken(subject: String = "app-owner-user") = generateToken(subject, listOf("ROLE_APP_OWNER"))
 
     // Helper to decode the token's claims (useful for debugging in tests)
     fun decodeClaims(token: String) = SignedJWT.parse(token).jwtClaimsSet.toJSONObject()
