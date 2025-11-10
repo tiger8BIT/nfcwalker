@@ -120,7 +120,7 @@ tasks.withType<Test> {
     environment("JWT_SECRET", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 }
 
-val openApiTargetDir = "$projectDir/docs/swagger"
+val openApiTargetDir = "$projectDir/docs"
 
 tasks.register<Copy>("copyOpenApi") {
     from(layout.buildDirectory.dir("generated/ksp/main/resources/META-INF/swagger"))
