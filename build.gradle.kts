@@ -22,10 +22,12 @@ repositories {
 dependencies {
     ksp("io.micronaut:micronaut-http-validation")
     ksp("io.micronaut.data:micronaut-data-processor")
+    ksp("io.micronaut.openapi:micronaut-openapi")
     ksp("io.micronaut.security:micronaut-security-annotations")
     ksp("io.micronaut.serde:micronaut-serde-processor")
     ksp("io.micronaut.validation:micronaut-validation-processor")
     implementation("io.micronaut:micronaut-management")
+    implementation("io.micronaut.openapi:micronaut-openapi")
     implementation("io.micronaut:micronaut-http-server-netty")
     implementation("io.micronaut.aws:micronaut-function-aws-api-proxy")
     implementation("io.micronaut.gcp:micronaut-gcp-function-http")
@@ -117,3 +119,16 @@ tasks.withType<Test> {
     // 32-byte secret (64 hex chars) to satisfy HS256 256-bit minimum key length
     environment("JWT_SECRET", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 }
+
+val openApiTargetDir = "$projectDir/docs/swagger"
+
+tasks.register<Copy>("copyOpenApi") {
+    from(layout.buildDirectory.dir("generated/ksp/main/resources/META-INF/swagger"))
+    into(openApiTargetDir)
+    rename { "openapi.yml" }
+}
+
+tasks.named("build") {
+    finalizedBy("copyOpenApi")
+}
+

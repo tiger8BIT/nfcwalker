@@ -9,6 +9,8 @@ micronaut:
           secret:
             generator:
               secret: ${JWT_SECRET:changeThisInProduction}
+  openapi:
+    enabled: true
 
 datasources:
   default:

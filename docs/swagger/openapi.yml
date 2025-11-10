@@ -1,0 +1,612 @@
+openapi: 3.0.1
+info:
+  title: nfcwalker
+  version: 1.0.0
+paths:
+  /api/admin/checkpoints:
+    get:
+      operationId: listCheckpoints
+      parameters:
+      - name: siteId
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: listCheckpoints 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CheckpointResponse"
+    post:
+      operationId: createCheckpoint
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCheckpointRequest"
+        required: true
+      responses:
+        "200":
+          description: createCheckpoint 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckpointResponse"
+  /api/admin/checkpoints/{id}:
+    delete:
+      operationId: deleteCheckpoint
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: deleteCheckpoint 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+  /api/admin/routes:
+    post:
+      operationId: createRoute
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRouteRequest"
+        required: true
+      responses:
+        "200":
+          description: createRoute 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RouteResponse"
+  /api/admin/routes/{id}:
+    delete:
+      operationId: deleteRoute
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: deleteRoute 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+  /api/admin/routes/{id}/points:
+    post:
+      operationId: addCheckpointsToRoute
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkAddRouteCheckpointsRequest"
+        required: true
+      responses:
+        "200":
+          description: addCheckpointsToRoute 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+  /api/organizations:
+    get:
+      operationId: listOrganizations
+      responses:
+        "200":
+          description: listOrganizations 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrganizationResponse"
+    post:
+      operationId: createOrganization
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationRequest"
+        required: true
+      responses:
+        "200":
+          description: createOrganization 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+  /api/organizations/{id}:
+    get:
+      operationId: getOrganization
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: getOrganization 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+    put:
+      operationId: updateOrganization
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrganizationRequest"
+        required: true
+      responses:
+        "200":
+          description: updateOrganization 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
+    delete:
+      operationId: deleteOrganization
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: deleteOrganization 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+  /api/scan/finish:
+    post:
+      operationId: finishScan
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinishScanRequest"
+        required: true
+      responses:
+        "200":
+          description: finishScan 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinishScanResponse"
+  /api/scan/start:
+    post:
+      operationId: startScan
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartScanRequest"
+        required: true
+      responses:
+        "200":
+          description: startScan 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartScanResponse"
+  /api/sites:
+    get:
+      operationId: listSites
+      parameters:
+      - name: organizationId
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: listSites 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SiteResponse"
+    post:
+      operationId: createSite
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSiteRequest"
+        required: true
+      responses:
+        "200":
+          description: createSite 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteResponse"
+  /api/sites/{id}:
+    get:
+      operationId: getSite
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: getSite 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteResponse"
+    put:
+      operationId: updateSite
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSiteRequest"
+        required: true
+      responses:
+        "200":
+          description: updateSite 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteResponse"
+    delete:
+      operationId: deleteSite
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: deleteSite 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+components:
+  schemas:
+    AddRouteCheckpointRequest:
+      required:
+      - checkpointId
+      - maxOffsetSec
+      - minOffsetSec
+      - seq
+      type: object
+      properties:
+        checkpointId:
+          type: string
+          format: uuid
+        seq:
+          type: integer
+          format: int32
+        minOffsetSec:
+          type: integer
+          format: int32
+        maxOffsetSec:
+          type: integer
+          format: int32
+    BulkAddRouteCheckpointsRequest:
+      required:
+      - checkpoints
+      type: object
+      properties:
+        checkpoints:
+          type: array
+          items:
+            $ref: "#/components/schemas/AddRouteCheckpointRequest"
+    CheckpointResponse:
+      required:
+      - code
+      - id
+      - organizationId
+      - siteId
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        siteId:
+          type: string
+          format: uuid
+        code:
+          type: string
+        geoLat:
+          type: number
+          nullable: true
+        geoLon:
+          type: number
+          nullable: true
+        radiusM:
+          type: number
+          nullable: true
+    CreateCheckpointRequest:
+      required:
+      - code
+      - organizationId
+      - siteId
+      type: object
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        siteId:
+          type: string
+          format: uuid
+        code:
+          type: string
+        geoLat:
+          type: number
+          nullable: true
+        geoLon:
+          type: number
+          nullable: true
+        radiusM:
+          type: number
+          nullable: true
+    CreateOrganizationRequest:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+    CreateRouteRequest:
+      required:
+      - name
+      - organizationId
+      - siteId
+      type: object
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        siteId:
+          type: string
+          format: uuid
+        name:
+          type: string
+    CreateSiteRequest:
+      required:
+      - name
+      - organizationId
+      type: object
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        name:
+          type: string
+    FinishScanRequest:
+      required:
+      - challenge
+      - scannedAt
+      - userId
+      type: object
+      properties:
+        challenge:
+          type: string
+        userId:
+          type: string
+        scannedAt:
+          type: string
+        lat:
+          type: number
+          nullable: true
+        lon:
+          type: number
+          nullable: true
+    FinishScanResponse:
+      required:
+      - eventId
+      - verdict
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        verdict:
+          type: string
+    GeoConstraint:
+      required:
+      - lat
+      - lon
+      - radiusM
+      type: object
+      properties:
+        lat:
+          type: number
+        lon:
+          type: number
+        radiusM:
+          type: number
+    OrganizationResponse:
+      required:
+      - createdAt
+      - id
+      - name
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    RouteResponse:
+      required:
+      - id
+      - name
+      - organizationId
+      - siteId
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        siteId:
+          type: string
+          format: uuid
+        name:
+          type: string
+    ScanPolicy:
+      required:
+      - checkpointId
+      - order
+      - runId
+      - timeWindow
+      type: object
+      properties:
+        runId:
+          type: string
+          format: uuid
+        checkpointId:
+          type: string
+          format: uuid
+        order:
+          type: integer
+          format: int32
+        timeWindow:
+          $ref: "#/components/schemas/TimeWindow"
+        geo:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/GeoConstraint"
+    SiteResponse:
+      required:
+      - createdAt
+      - id
+      - name
+      - organizationId
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    StartScanRequest:
+      required:
+      - checkpointCode
+      - deviceId
+      - organizationId
+      type: object
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        deviceId:
+          type: string
+        checkpointCode:
+          type: string
+    StartScanResponse:
+      required:
+      - challenge
+      - policy
+      type: object
+      properties:
+        challenge:
+          type: string
+        policy:
+          $ref: "#/components/schemas/ScanPolicy"
+    TimeWindow:
+      required:
+      - maxOffsetSec
+      - minOffsetSec
+      type: object
+      properties:
+        minOffsetSec:
+          type: integer
+          format: int32
+        maxOffsetSec:
+          type: integer
+          format: int32
+    UpdateOrganizationRequest:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+    UpdateSiteRequest:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          type: string
