@@ -13,6 +13,7 @@ version = "0.1"
 group = "ge.tiger8bit"
 
 val kotlinVersion = project.properties.get("kotlinVersion")
+val logstashEncoderVersion = project.properties.get("logstashEncoderVersion")
 repositories {
     mavenCentral()
 }
@@ -41,6 +42,8 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlinVersion}")
     implementation("com.nimbusds:nimbus-jose-jwt:9.37.3")
+    implementation("io.micronaut.tracing:micronaut-tracing-opentelemetry")
+    runtimeOnly("net.logstash.logback:logstash-logback-encoder:${logstashEncoderVersion}")
     compileOnly("io.micronaut:micronaut-http-client")
     runtimeOnly("ch.qos.logback:logback-classic")
     runtimeOnly("com.fasterxml.jackson.module:jackson-module-kotlin")
