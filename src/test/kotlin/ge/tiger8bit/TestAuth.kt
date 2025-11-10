@@ -15,7 +15,11 @@ object TestAuth {
 
     private val signingKeyBytes: ByteArray by lazy { rawSecret.toByteArray() }
 
-    fun generateToken(subject: String = "test-user", roles: List<String> = listOf("ROLE_BOSS")): String {
+    /**
+     * Generate JWT token with custom subject and roles.
+     * For common roles, use generateBossToken(), generateWorkerToken(), generateAppOwnerToken()
+     */
+    fun generateCustomToken(subject: String = "test-user", roles: List<String>): String {
         val now = Date()
         val exp = Date(now.time + 3600_000L)
 
@@ -44,9 +48,9 @@ object TestAuth {
     }
 
     // Convenience helpers for common test roles
-    fun generateBossToken(subject: String = "boss-user") = generateToken(subject, listOf("ROLE_BOSS"))
-    fun generateWorkerToken(subject: String = "worker-user") = generateToken(subject, listOf("ROLE_WORKER"))
-    fun generateAppOwnerToken(subject: String = "app-owner-user") = generateToken(subject, listOf("ROLE_APP_OWNER"))
+    fun generateBossToken(subject: String = "boss-user") = generateCustomToken(subject, listOf("ROLE_BOSS"))
+    fun generateWorkerToken(subject: String = "worker-user") = generateCustomToken(subject, listOf("ROLE_WORKER"))
+    fun generateAppOwnerToken(subject: String = "app-owner-user") = generateCustomToken(subject, listOf("ROLE_APP_OWNER"))
 
     // Helper to decode the token's claims (useful for debugging in tests)
     fun decodeClaims(token: String) = SignedJWT.parse(token).jwtClaimsSet.toJSONObject()

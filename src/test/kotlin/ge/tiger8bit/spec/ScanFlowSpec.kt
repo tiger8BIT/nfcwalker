@@ -33,7 +33,7 @@ class ScanFlowSpec : StringSpec() {
     @field:Client("/")
     lateinit var client: HttpClient
 
-    private val authToken = TestAuth.generateToken()
+    private val bossToken = TestAuth.generateBossToken()
 
     init {
         "complete start/finish" {
@@ -49,7 +49,7 @@ class ScanFlowSpec : StringSpec() {
                         BigDecimal("44.8270903"),
                         BigDecimal("100.00")
                     )
-                ).withAuth(authToken),
+                ).withAuth(bossToken),
                 CheckpointResponse::class.java
             )
             val route = TestFixtures.createRoute(patrolRouteRepository, org.id!!, site.id!!)
@@ -57,7 +57,7 @@ class ScanFlowSpec : StringSpec() {
                 HttpRequest.POST(
                     "/api/admin/routes/${route.id}/points",
                     BulkAddRouteCheckpointsRequest(listOf(AddRouteCheckpointRequest(cp.id as java.util.UUID, 1, 0, 3600)))
-                ).withAuth(authToken), Map::class.java
+                ).withAuth(bossToken), Map::class.java
             )
 
             val run = patrolRunRepository.save(
@@ -72,7 +72,7 @@ class ScanFlowSpec : StringSpec() {
             patrolRunRepository.flush()
 
             val start = client.toBlocking().retrieve(
-                HttpRequest.POST("/api/scan/start", StartScanRequest(org.id!!, "device-123", cp.code)).withAuth(authToken),
+                HttpRequest.POST("/api/scan/start", StartScanRequest(org.id!!, "device-123", cp.code)).withAuth(bossToken),
                 StartScanResponse::class.java
             )
             start.challenge shouldNotBe null
@@ -89,7 +89,7 @@ class ScanFlowSpec : StringSpec() {
                         BigDecimal("41.7151377"),
                         BigDecimal("44.8270903")
                     )
-                ).withAuth(authToken), FinishScanResponse::class.java
+                ).withAuth(bossToken), FinishScanResponse::class.java
             )
             finish.verdict shouldBe "ok"
             finish.eventId shouldNotBe null

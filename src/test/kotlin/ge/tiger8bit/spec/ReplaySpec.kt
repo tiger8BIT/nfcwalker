@@ -35,7 +35,7 @@ class ReplaySpec : StringSpec() {
     @field:Client("/")
     lateinit var client: HttpClient
 
-    private val authToken = TestAuth.generateToken()
+    private val bossToken = TestAuth.generateBossToken()
 
     init {
         "replay attack returns 409" {
@@ -44,14 +44,14 @@ class ReplaySpec : StringSpec() {
                 HttpRequest.POST(
                     "/api/admin/checkpoints",
                     CreateCheckpointRequest(org.id!!, site.id!!, "CP-${java.util.UUID.randomUUID()}")
-                ).withAuth(authToken), CheckpointResponse::class.java
+                ).withAuth(bossToken), CheckpointResponse::class.java
             )
             val route = TestFixtures.createRoute(patrolRouteRepository, org.id!!, site.id!!)
             client.toBlocking().retrieve(
                 HttpRequest.POST(
                     "/api/admin/routes/${route.id}/points",
                     BulkAddRouteCheckpointsRequest(listOf(AddRouteCheckpointRequest(cp.id, 1)))
-                ).withAuth(authToken), Map::class.java
+                ).withAuth(bossToken), Map::class.java
             )
 
             // Create an active patrol run so /api/scan/start can find it
@@ -67,14 +67,14 @@ class ReplaySpec : StringSpec() {
             patrolRunRepository.flush()
 
             val start = client.toBlocking().retrieve(
-                HttpRequest.POST("/api/scan/start", StartScanRequest(org.id!!, "device-replay-123", cp.code)).withAuth(authToken),
+                HttpRequest.POST("/api/scan/start", StartScanRequest(org.id!!, "device-replay-123", cp.code)).withAuth(bossToken),
                 StartScanResponse::class.java
             )
             client.toBlocking().retrieve(
                 HttpRequest.POST(
                     "/api/scan/finish",
                     FinishScanRequest(start.challenge, "user-replay", java.time.Instant.now().toString())
-                ).withAuth(authToken), FinishScanResponse::class.java
+                ).withAuth(bossToken), FinishScanResponse::class.java
             )
 
             val ex = assertThrows<HttpClientResponseException> {
@@ -82,7 +82,7 @@ class ReplaySpec : StringSpec() {
                     HttpRequest.POST(
                         "/api/scan/finish",
                         FinishScanRequest(start.challenge, "user-replay", java.time.Instant.now().toString())
-                    ).withAuth(authToken), FinishScanResponse::class.java
+                    ).withAuth(bossToken), FinishScanResponse::class.java
                 )
             }
             ex.status shouldBe HttpStatus.CONFLICT

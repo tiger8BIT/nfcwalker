@@ -11,10 +11,13 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.micronaut.http.HttpRequest
+import io.micronaut.http.HttpStatus
 import io.micronaut.http.client.HttpClient
 import io.micronaut.http.client.annotation.Client
+import io.micronaut.http.client.exceptions.HttpClientResponseException
 import io.micronaut.test.extensions.kotest5.annotation.MicronautTest
 import jakarta.inject.Inject
+import org.junit.jupiter.api.assertThrows
 import java.math.BigDecimal
 
 @MicronautTest(transactional = false)
@@ -29,10 +32,10 @@ class CheckpointSpec : StringSpec() {
     @field:Client("/")
     lateinit var client: HttpClient
 
-    private val authToken = TestAuth.generateToken()
+    private val bossToken = TestAuth.generateBossToken()
 
     init {
-        "create checkpoint via admin API" {
+        "BOSS can create checkpoint via admin API" {
             val (org, site) = TestFixtures.seedOrgAndSite(organizationRepository, siteRepository)
             val request = CreateCheckpointRequest(
                 organizationId = org.id!!,
@@ -43,12 +46,12 @@ class CheckpointSpec : StringSpec() {
                 radiusM = BigDecimal("50.00")
             )
             val response = client.toBlocking()
-                .retrieve(HttpRequest.POST("/api/admin/checkpoints", request).withAuth(authToken), CheckpointResponse::class.java)
+                .retrieve(HttpRequest.POST("/api/admin/checkpoints", request).withAuth(bossToken), CheckpointResponse::class.java)
             response.code shouldBe request.code
             response.id shouldNotBe null
         }
 
-        "list checkpoints by site" {
+        "BOSS can list checkpoints by site" {
             val (org, site) = TestFixtures.seedOrgAndSite(organizationRepository, siteRepository)
             val request = CreateCheckpointRequest(
                 organizationId = org.id!!,
@@ -56,13 +59,31 @@ class CheckpointSpec : StringSpec() {
                 code = "CP-${java.util.UUID.randomUUID()}"
             )
             client.toBlocking()
-                .retrieve(HttpRequest.POST("/api/admin/checkpoints", request).withAuth(authToken), CheckpointResponse::class.java)
+                .retrieve(HttpRequest.POST("/api/admin/checkpoints", request).withAuth(bossToken), CheckpointResponse::class.java)
             val list = client.toBlocking().retrieve(
-                HttpRequest.GET<Any>("/api/admin/checkpoints?siteId=${site.id}").withAuth(authToken),
+                HttpRequest.GET<Any>("/api/admin/checkpoints?siteId=${site.id}").withAuth(bossToken),
                 Array<CheckpointResponse>::class.java
             ).toList()
             list.size shouldBe 1
             list[0].code shouldBe request.code
         }
+
+        "WORKER cannot create checkpoint (forbidden)" {
+            val workerToken = TestAuth.generateWorkerToken()
+            val (org, site) = TestFixtures.seedOrgAndSite(organizationRepository, siteRepository)
+            val request = CreateCheckpointRequest(
+                organizationId = org.id!!,
+                siteId = site.id!!,
+                code = "CP-${java.util.UUID.randomUUID()}"
+            )
+            val exception = assertThrows<HttpClientResponseException> {
+                client.toBlocking().retrieve(
+                    HttpRequest.POST("/api/admin/checkpoints", request).withAuth(workerToken),
+                    CheckpointResponse::class.java
+                )
+            }
+            exception.status shouldBe HttpStatus.FORBIDDEN
+        }
     }
 }
+

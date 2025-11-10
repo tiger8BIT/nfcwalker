@@ -175,9 +175,36 @@ Migrations:
 ---
 ## 9. Testing
 
+### Test Structure
 - Unit tests: спецификации в `src/test/kotlin/ge/tiger8bit/spec/`
-- Test fixtures: `TestFixtures.kt`, `TestAuth.kt`
-- Test roles: `generateBossToken()`, `generateWorkerToken()`
+- Test framework: Kotest (StringSpec style)
+- Test fixtures: `TestFixtures.kt` - helper methods для создания тестовых данных
+- Test auth: `TestAuth.kt` - генерация JWT токенов для разных ролей
+
+### Authorization Testing Strategy
+**Минималистичный подход:** для каждой неправильной роли проверяем доступ только к ОДНОМУ эндпоинту контроллера, чтобы убедиться что `@Secured` работает.
+
+### Test Helpers
+```kotlin
+TestAuth.generateAppOwnerToken()  // для APP_OWNER
+TestAuth.generateBossToken()      // для BOSS
+TestAuth.generateWorkerToken()    // для WORKER
+TestAuth.generateToken(subject, roles)  // кастомная генерация
+
+TestFixtures.seedOrgAndSite(...)  // создает Organization + Site
+TestFixtures.createRoute(...)     // создает PatrolRoute
+```
+
+### Test Coverage
+- ✅ OrganizationSpec - CRUD organizations (APP_OWNER only)
+- ✅ SiteSpec - CRUD sites (BOSS only)
+- ✅ CheckpointSpec - create/list checkpoints (BOSS only)
+- ✅ RouteSpec - create routes, add checkpoints (BOSS only)
+- ✅ ScanFlowSpec - полный flow сканирования
+- ✅ ReplaySpec - защита от replay-атак
+- ✅ HealthSpec - health check endpoint
+
+Подробнее: `docs/TEST_COVERAGE.md`
 
 ---
 ## 10. Current State (2025-11-11)

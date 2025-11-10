@@ -123,21 +123,17 @@ class OrganizationSpec : StringSpec() {
         }
 
         "BOSS cannot access organization endpoints (forbidden)" {
-            val request = CreateOrganizationRequest(name = "Should Fail ${java.util.UUID.randomUUID()}")
-
             val exception = assertThrows<HttpClientResponseException> {
                 client.toBlocking().retrieve(
-                    HttpRequest.POST("/api/organizations", request).withAuth(bossToken),
-                    OrganizationResponse::class.java
+                    HttpRequest.GET<Any>("/api/organizations").withAuth(bossToken),
+                    Array<OrganizationResponse>::class.java
                 )
             }
-
             exception.status shouldBe HttpStatus.FORBIDDEN
         }
 
         "WORKER cannot access organization endpoints (forbidden)" {
             val workerToken = TestAuth.generateWorkerToken()
-
             val exception = assertThrows<HttpClientResponseException> {
                 client.toBlocking().retrieve(
                     HttpRequest.GET<Any>("/api/organizations").withAuth(workerToken),

@@ -126,59 +126,22 @@ class SiteSpec : StringSpec() {
             response["id"] shouldBe created.id.toString()
         }
 
-        "WORKER cannot create site (forbidden)" {
-            val (org, _) = TestFixtures.seedOrgAndSite(organizationRepository, siteRepository)
-
-            val request = CreateSiteRequest(
-                organizationId = org.id!!,
-                name = "Should Fail ${java.util.UUID.randomUUID()}"
-            )
-
+        "WORKER cannot access site endpoints (forbidden)" {
             val exception = assertThrows<HttpClientResponseException> {
                 client.toBlocking().retrieve(
-                    HttpRequest.POST("/api/sites", request).withAuth(workerToken),
-                    SiteResponse::class.java
-                )
-            }
-
-            exception.status shouldBe HttpStatus.FORBIDDEN
-        }
-
-        "WORKER cannot list sites (forbidden)" {
-            val (org, _) = TestFixtures.seedOrgAndSite(organizationRepository, siteRepository)
-
-            val exception = assertThrows<HttpClientResponseException> {
-                client.toBlocking().retrieve(
-                    HttpRequest.GET<Any>("/api/sites?organizationId=${org.id}").withAuth(workerToken),
+                    HttpRequest.GET<Any>("/api/sites?organizationId=${java.util.UUID.randomUUID()}").withAuth(workerToken),
                     Array<SiteResponse>::class.java
                 )
             }
-
             exception.status shouldBe HttpStatus.FORBIDDEN
         }
 
-        "WORKER cannot update site (forbidden)" {
-            val (_, site) = TestFixtures.seedOrgAndSite(organizationRepository, siteRepository)
-
-            val updateRequest = UpdateSiteRequest(name = "Should Fail")
-
+        "APP_OWNER cannot access site endpoints (forbidden)" {
+            val appOwnerToken = TestAuth.generateAppOwnerToken()
             val exception = assertThrows<HttpClientResponseException> {
                 client.toBlocking().retrieve(
-                    HttpRequest.PUT("/api/sites/${site.id}", updateRequest).withAuth(workerToken),
-                    SiteResponse::class.java
-                )
-            }
-
-            exception.status shouldBe HttpStatus.FORBIDDEN
-        }
-
-        "WORKER cannot delete site (forbidden)" {
-            val (_, site) = TestFixtures.seedOrgAndSite(organizationRepository, siteRepository)
-
-            val exception = assertThrows<HttpClientResponseException> {
-                client.toBlocking().retrieve(
-                    HttpRequest.DELETE<Any>("/api/sites/${site.id}").withAuth(workerToken),
-                    Map::class.java
+                    HttpRequest.GET<Any>("/api/sites?organizationId=${java.util.UUID.randomUUID()}").withAuth(appOwnerToken),
+                    Array<SiteResponse>::class.java
                 )
             }
 
