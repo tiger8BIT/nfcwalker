@@ -32,7 +32,7 @@ open class ScanController(
     @Post("/start")
     @Transactional
     open fun startScan(@Body request: StartScanRequest): StartScanResponse {
-        logger.debug("Start scan: cpCode={}, device={}, org={}", request.checkpointCode, request.deviceId, request.organizationId)
+        logger.info("Start scan: cpCode={}, device={}, org={}", request.checkpointCode, request.deviceId, request.organizationId)
 
         val checkpoint = checkpointRepository.findByCode(request.checkpointCode)
             .orElseThrow {
@@ -69,7 +69,7 @@ open class ScanController(
     @Post("/finish")
     @Transactional
     open fun finishScan(@Body request: FinishScanRequest): HttpResponse<FinishScanResponse> {
-        logger.debug("Finish scan: user={}", request.userId)
+        logger.info("Finish scan: user={}", request.userId)
 
         val (orgId, deviceId, checkpointId) = parseChallenge(request.challenge)
 

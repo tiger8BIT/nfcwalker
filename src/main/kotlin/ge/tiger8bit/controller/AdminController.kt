@@ -25,7 +25,7 @@ open class AdminController(
     @Post("/checkpoints")
     @Transactional
     open fun createCheckpoint(@Body request: CreateCheckpointRequest): CheckpointResponse {
-        logger.debug("Creating checkpoint: code={}, orgId={}, siteId={}", request.code, request.organizationId, request.siteId)
+        logger.info("Creating checkpoint: code={}, orgId={}, siteId={}", request.code, request.organizationId, request.siteId)
 
         val checkpoint = checkpointRepository.save(
             Checkpoint(
@@ -44,7 +44,7 @@ open class AdminController(
 
     @Get("/checkpoints")
     fun listCheckpoints(@QueryValue siteId: UUID): List<CheckpointResponse> {
-        logger.debug("Listing checkpoints for site: {}", siteId)
+        logger.info("Listing checkpoints for site: {}", siteId)
 
         val checkpoints = checkpointRepository.findBySiteId(siteId)
         logger.info("Found {} checkpoints in site: {}", checkpoints.size, siteId)
@@ -55,7 +55,7 @@ open class AdminController(
     @Post("/routes")
     @Transactional
     open fun createRoute(@Body request: CreateRouteRequest): RouteResponse {
-        logger.debug("Creating route: name={}, orgId={}, siteId={}", request.name, request.organizationId, request.siteId)
+        logger.info("Creating route: name={}, orgId={}, siteId={}", request.name, request.organizationId, request.siteId)
 
         val route = patrolRouteRepository.save(
             PatrolRoute(
@@ -75,7 +75,7 @@ open class AdminController(
         @PathVariable id: UUID,
         @Body request: BulkAddRouteCheckpointsRequest
     ): Map<String, Any> {
-        logger.debug("Adding {} checkpoints to route: {}", request.checkpoints.size, id)
+        logger.info("Adding {} checkpoints to route: {}", request.checkpoints.size, id)
 
         val checkpoints = request.checkpoints.map { it.toEntity(id) }
         patrolRouteCheckpointRepository.saveAll(checkpoints)
