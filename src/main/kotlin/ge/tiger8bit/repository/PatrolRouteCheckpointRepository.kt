@@ -9,5 +9,7 @@ import java.util.UUID
 @Repository
 interface PatrolRouteCheckpointRepository : JpaRepository<PatrolRouteCheckpoint, PatrolRouteCheckpointId> {
     fun findByRouteIdOrderBySeqAsc(routeId: UUID): List<PatrolRouteCheckpoint>
+    fun deleteByRouteId(routeId: UUID)
+    fun deleteByCheckpointId(checkpointId: UUID)
 }
 

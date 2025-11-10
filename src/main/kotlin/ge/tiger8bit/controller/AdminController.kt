@@ -84,6 +84,54 @@ open class AdminController(
         return mapOf("added" to checkpoints.size)
     }
 
+    @Delete("/routes/{id}")
+    @Transactional
+    open fun deleteRoute(@PathVariable id: UUID): Map<String, String> {
+        logger.info("Deleting route: {}", id)
+
+        if (!patrolRouteRepository.existsById(id)) {
+            logger.warn("Route not found: {}", id)
+            throw io.micronaut.http.exceptions.HttpStatusException(
+                io.micronaut.http.HttpStatus.NOT_FOUND,
+                "Route not found"
+            )
+        }
+
+        // First delete all route checkpoints (due to foreign key constraints)
+        patrolRouteCheckpointRepository.deleteByRouteId(id)
+        logger.info("Deleted route checkpoints for route: {}", id)
+
+        // Then delete the route itself
+        patrolRouteRepository.deleteById(id)
+        logger.info("Route deleted: {}", id)
+
+        return mapOf("status" to "deleted", "id" to id.toString())
+    }
+
+    @Delete("/checkpoints/{id}")
+    @Transactional
+    open fun deleteCheckpoint(@PathVariable id: UUID): Map<String, String> {
+        logger.info("Deleting checkpoint: {}", id)
+
+        if (!checkpointRepository.existsById(id)) {
+            logger.warn("Checkpoint not found: {}", id)
+            throw io.micronaut.http.exceptions.HttpStatusException(
+                io.micronaut.http.HttpStatus.NOT_FOUND,
+                "Checkpoint not found"
+            )
+        }
+
+        // First delete all route checkpoint associations
+        patrolRouteCheckpointRepository.deleteByCheckpointId(id)
+        logger.info("Deleted route associations for checkpoint: {}", id)
+
+        // Then delete the checkpoint itself
+        checkpointRepository.deleteById(id)
+        logger.info("Checkpoint deleted: {}", id)
+
+        return mapOf("status" to "deleted", "id" to id.toString())
+    }
+
     // ===== Private Helpers =====
 
     private fun Checkpoint.toResponse() = CheckpointResponse(
