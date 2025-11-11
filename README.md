@@ -2,6 +2,8 @@
 
 NFC patrol tracking service built with Kotlin, Micronaut, and PostgreSQL. Runs locally (Netty) or serverless (AWS Lambda, GCP Cloud Functions).
 
+> 📖 **[API Spec](https://tiger8bit.github.io/nfcwalker/)** – OpenAPI 3.0.1
+
 ## Prerequisites
 - Java 21
 - Gradle wrapper
