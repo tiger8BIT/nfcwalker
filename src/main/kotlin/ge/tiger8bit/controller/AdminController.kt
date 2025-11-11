@@ -4,14 +4,14 @@ import ge.tiger8bit.domain.Checkpoint
 import ge.tiger8bit.domain.PatrolRoute
 import ge.tiger8bit.domain.PatrolRouteCheckpoint
 import ge.tiger8bit.dto.*
+import ge.tiger8bit.getLogger
 import ge.tiger8bit.repository.CheckpointRepository
 import ge.tiger8bit.repository.PatrolRouteCheckpointRepository
 import ge.tiger8bit.repository.PatrolRouteRepository
-import ge.tiger8bit.getLogger
 import io.micronaut.http.annotation.*
-import jakarta.transaction.Transactional
 import io.micronaut.security.annotation.Secured
-import java.util.UUID
+import jakarta.transaction.Transactional
+import java.util.*
 
 @Controller("/api/admin")
 @Secured("ROLE_BOSS")
@@ -81,7 +81,7 @@ open class AdminController(
         patrolRouteCheckpointRepository.saveAll(checkpoints)
 
         logger.info("Added {} route checkpoints to route: {}", checkpoints.size, id)
-        return mapOf("added" to checkpoints.size)
+        return mapOf("status" to "updated", "added" to checkpoints.size)
     }
 
     @Delete("/routes/{id}")

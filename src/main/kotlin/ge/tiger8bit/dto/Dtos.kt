@@ -1,8 +1,9 @@
 package ge.tiger8bit.dto
 
+import ge.tiger8bit.domain.Role
 import io.micronaut.serde.annotation.Serdeable
 import java.math.BigDecimal
-import java.util.UUID
+import java.util.*
 
 @Serdeable
 data class CreateCheckpointRequest(
@@ -143,3 +144,56 @@ data class FinishScanResponse(
     val verdict: String
 )
 
+// ===== Authentication & User Management DTOs =====
+
+@Serdeable
+data class UserResponse(
+    val id: UUID,
+    val email: String,
+    val name: String,
+    val createdAt: String
+)
+
+@Serdeable
+data class RegisterDeviceRequest(
+    val deviceId: String,
+    val metadata: String? = null
+)
+
+@Serdeable
+data class DeviceResponse(
+    val id: UUID,
+    val deviceId: String,
+    val metadata: String? = null,
+    val status: String,
+    val registeredAt: String,
+    val lastUsedAt: String? = null
+)
+
+@Serdeable
+data class CreateInvitationRequest(
+    val email: String,
+    val organizationId: UUID,
+    val role: Role
+)
+
+@Serdeable
+data class InvitationResponse(
+    val id: UUID,
+    val email: String,
+    val organizationId: UUID,
+    val role: Role,
+    val status: String,
+    val expiresAt: String
+)
+
+@Serdeable
+data class AcceptInvitationRequest(
+    val token: String
+)
+
+@Serdeable
+data class AuthMeResponse(
+    val user: UserResponse,
+    val roles: Map<String, Role>
+)

@@ -1,5 +1,9 @@
 # Project Memory: NFC Walker Patrol System
-_Last updated: 2025-11-11_
+
+_Last updated: 2025-11-12_
+
+**⚠️ DEV ENVIRONMENT**: Not in production yet - can modify existing migrations freely (V1, V2, V3, etc.)
+**Coding Standards**: English only (no Russian), no TODO comments (implement immediately), no explanation MD files
 
 This file is for the assistant's fast recall. Keep it **concise**, **actionable**, and **current**. Avoid marketing fluff or duplication of the README. Update when architecture, invariants, or active tasks change.
 
@@ -186,25 +190,28 @@ Migrations:
 
 ### Test Helpers
 ```kotlin
-TestAuth.generateAppOwnerToken()  // для APP_OWNER
-TestAuth.generateBossToken()      // для BOSS
-TestAuth.generateWorkerToken()    // для WORKER
-TestAuth.generateToken(subject, roles)  // кастомная генерация
+// Create user with specific role in org
+TestFixtures.createUserWithRole(userRepo, userRoleRepo, orgId, "ROLE_BOSS")
+// Returns: Pair<User, UserRole>
 
-TestFixtures.seedOrgAndSite(...)  // создает Organization + Site
-TestFixtures.createRoute(...)     // создает PatrolRoute
+// Register device for user
+TestFixtures.createDevice(deviceRepo, userId, orgId, deviceId, metadata)
+// Returns: Device
+
+// Generate JWT token with UUID subject
+TestAuth.generateBossToken(userUUID.toString())
+TestAuth.generateWorkerToken(userUUID.toString())
+TestAuth.generateAppOwnerToken(userUUID.toString())
 ```
 
-### Test Coverage
-- ✅ OrganizationSpec - CRUD organizations (APP_OWNER only)
-- ✅ SiteSpec - CRUD sites (BOSS only)
-- ✅ CheckpointSpec - create/list checkpoints (BOSS only)
-- ✅ RouteSpec - create routes, add checkpoints (BOSS only)
-- ✅ ScanFlowSpec - полный flow сканирования
-- ✅ ReplaySpec - защита от replay-атак
-- ✅ HealthSpec - health check endpoint
+### Test Structure
 
-Подробнее: `docs/TEST_COVERAGE.md`
+- **ScanFlowSpec** - end-to-end scan flow (uses registered users + devices)
+- **ReplaySpec** - replay attack protection (uses registered users + devices)
+- **OrganizationSpec, SiteSpec, CheckpointSpec, RouteSpec** - CRUD operations (no user/device setup needed)
+- **HealthSpec** - health check (no auth needed)
+
+Tests that do /api/scan must create real User + Device. Other tests use JWT role verification only.
 
 ---
 ## 10. Current State (2025-11-11)
@@ -235,6 +242,34 @@ TestFixtures.createRoute(...)     // создает PatrolRoute
 - [ ] Добавить отчеты по патрулированию
 - [ ] Websockets для real-time мониторинга (опционально)
 
+### 🔐 Authentication Implementation Plan (Nov 2025)
+
+**Status**: ✅ Core services & controllers implemented
+
+**Implemented**:
+
+- ✅ Domain entities: User, UserRole (@Embeddable composite key), Device, Invitation
+- ✅ Repositories: UserRepository, UserRoleRepository, DeviceRepository, InvitationRepository
+- ✅ Services:
+    - AuthService - getOrCreateUserFromGoogle, acceptInvitation, getUserRole(s)
+    - DeviceService - registerDevice, revokeDevice, getUserDevices, updateLastUsed
+    - InvitationService - createInvitation, getValidInvitation, cancelInvitation
+- ✅ Controllers:
+    - AuthController - /auth (GET /me, POST /invite/accept, GET /health) - placeholder until OAuth2
+    - InvitationController - /api/invitations (POST, GET, DELETE)
+    - DeviceController - /api/devices (POST, GET, DELETE)
+- ✅ DTOs for all endpoints
+- ✅ V1 migration updated with users, user_roles, devices, invitations tables
+
+**TODO**:
+
+- [ ] Google OAuth2 endpoint integration (/auth/oauth/google/callback)
+- [ ] Extract userId from JWT token in controllers
+- [ ] Extract createdBy from JWT token in invitation creation
+- [ ] Email sending for invitations
+- [ ] Integration tests for auth flow
+- [ ] Update ScanController to use device_id from actual registered device (not just string)
+
 ---
 ## 11. Code Conventions
 
@@ -243,4 +278,39 @@ TestFixtures.createRoute(...)     // создает PatrolRoute
 - Response helpers: extension функции `toResponse()` внутри контроллеров
 - DTOs: все в `dto/Dtos.kt` с аннотацией `@Serdeable`
 - Репозитории: интерфейсы в `repository/`, наследуют `JpaRepository<Entity, UUID>`
+- Роли: используются как enum `Role` (ROLE_APP_OWNER, ROLE_BOSS, ROLE_WORKER) - не строки!
+
+## 12. Authentication System
+
+**Role Enum**:
+
+```kotlin
+enum class Role {
+    ROLE_APP_OWNER,
+    ROLE_BOSS,
+    ROLE_WORKER
+}
+```
+
+**TestFixtures** (инжектит репозитории автоматически):
+
+```kotlin
+TestFixtures.init(beanContext)  // один раз в init
+
+val (user, role) = TestFixtures.createUserWithRole(
+    organizationId,
+    Role.ROLE_BOSS,
+    email = "boss@test.com"
+)
+val device = TestFixtures.createDevice(userId, orgId, deviceId = "...")
+val route = TestFixtures.createRoute(orgId, siteId)
+```
+
+**User Registration Flow**:
+
+1. App Owner приглашает Boss: `InvitationService.createInvitation(..., Role.ROLE_BOSS, ...)`
+2. Boss получает ссылку с токеном
+3. Boss логинится через Google → `AuthService.getOrCreateUserFromGoogle(googleId, email, name)`
+4. Boss принимает инвайт → `AuthService.acceptInvitation(token, userId)` → создаётся UserRole
+5. Boss может приглашать Workers аналогично
 

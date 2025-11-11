@@ -2,12 +2,8 @@ package ge.tiger8bit.spec
 
 import ge.tiger8bit.TestAuth
 import ge.tiger8bit.TestFixtures
-import ge.tiger8bit.domain.PatrolRun
+import ge.tiger8bit.domain.Role
 import ge.tiger8bit.dto.*
-import ge.tiger8bit.repository.OrganizationRepository
-import ge.tiger8bit.repository.PatrolRouteRepository
-import ge.tiger8bit.repository.PatrolRunRepository
-import ge.tiger8bit.repository.SiteRepository
 import ge.tiger8bit.withAuth
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -19,73 +15,70 @@ import io.micronaut.http.client.exceptions.HttpClientResponseException
 import io.micronaut.test.extensions.kotest5.annotation.MicronautTest
 import jakarta.inject.Inject
 import org.junit.jupiter.api.assertThrows
-import java.time.Instant
+import java.util.*
 
 @MicronautTest(transactional = false)
-class ReplaySpec : StringSpec() {
-    @Inject
-    lateinit var organizationRepository: OrganizationRepository
-    @Inject
-    lateinit var siteRepository: SiteRepository
-    @Inject
-    lateinit var patrolRouteRepository: PatrolRouteRepository
-    @Inject
-    lateinit var patrolRunRepository: PatrolRunRepository
-    @Inject
-    @field:Client("/")
-    lateinit var client: HttpClient
+class ReplaySpec(
+    @Inject @Client("/") val client: HttpClient,
+    @Inject val beanContext: io.micronaut.context.BeanContext
+) : StringSpec({
+    TestFixtures.init(beanContext)
 
-    private val bossToken = TestAuth.generateBossToken()
+    "replay attack returns 409" {
+        val (org, site) = TestFixtures.seedOrgAndSite()
 
-    init {
-        "replay attack returns 409" {
-            val (org, site) = TestFixtures.seedOrgAndSite(organizationRepository, siteRepository)
-            val cp = client.toBlocking().retrieve(
-                HttpRequest.POST(
-                    "/api/admin/checkpoints",
-                    CreateCheckpointRequest(org.id!!, site.id!!, "CP-${java.util.UUID.randomUUID()}")
-                ).withAuth(bossToken), CheckpointResponse::class.java
-            )
-            val route = TestFixtures.createRoute(patrolRouteRepository, org.id!!, site.id!!)
-            client.toBlocking().retrieve(
-                HttpRequest.POST(
-                    "/api/admin/routes/${route.id}/points",
-                    BulkAddRouteCheckpointsRequest(listOf(AddRouteCheckpointRequest(cp.id, 1)))
-                ).withAuth(bossToken), Map::class.java
-            )
+        val (workerUser, _) = TestFixtures.createUserWithRole(
+            org.id!!,
+            Role.ROLE_WORKER,
+            email = "worker@replay-test.com"
+        )
+        val deviceId = "device-replay-${UUID.randomUUID()}"
+        TestFixtures.createDevice(workerUser.id!!, org.id!!, deviceId = deviceId)
+        val workerToken = TestAuth.generateWorkerToken(workerUser.id.toString())
 
-            // Create an active patrol run so /api/scan/start can find it
-            patrolRunRepository.save(
-                PatrolRun(
-                    routeId = route.id!!,
-                    organizationId = org.id!!,
-                    plannedStart = Instant.now(),
-                    plannedEnd = Instant.now().plusSeconds(7200),
-                    status = "pending"
-                )
-            )
-            patrolRunRepository.flush()
+        val (bossUser, _) = TestFixtures.createUserWithRole(
+            org.id!!,
+            Role.ROLE_BOSS,
+            email = "boss@replay-test.com"
+        )
+        val bossToken = TestAuth.generateBossToken(bossUser.id.toString())
 
-            val start = client.toBlocking().retrieve(
-                HttpRequest.POST("/api/scan/start", StartScanRequest(org.id!!, "device-replay-123", cp.code)).withAuth(bossToken),
-                StartScanResponse::class.java
-            )
+        val cp = client.toBlocking().retrieve(
+            HttpRequest.POST(
+                "/api/admin/checkpoints",
+                CreateCheckpointRequest(org.id!!, site.id!!, "CP-${UUID.randomUUID()}")
+            ).withAuth(bossToken), CheckpointResponse::class.java
+        )
+        val route = TestFixtures.createRoute(org.id!!, site.id!!)
+        client.toBlocking().retrieve(
+            HttpRequest.POST(
+                "/api/admin/routes/${route.id}/points",
+                BulkAddRouteCheckpointsRequest(listOf(AddRouteCheckpointRequest(cp.id, 1)))
+            ).withAuth(bossToken), Map::class.java
+        )
+
+        TestFixtures.createPatrolRun(route.id!!, org.id!!)
+
+        val start = client.toBlocking().retrieve(
+            HttpRequest.POST("/api/scan/start", StartScanRequest(org.id!!, deviceId, cp.code)).withAuth(workerToken),
+            StartScanResponse::class.java
+        )
+        client.toBlocking().retrieve(
+            HttpRequest.POST(
+                "/api/scan/finish",
+                FinishScanRequest(start.challenge, workerUser.id.toString(), java.time.Instant.now().toString())
+            ).withAuth(workerToken), FinishScanResponse::class.java
+        )
+
+        val ex = assertThrows<HttpClientResponseException> {
             client.toBlocking().retrieve(
                 HttpRequest.POST(
                     "/api/scan/finish",
-                    FinishScanRequest(start.challenge, "user-replay", java.time.Instant.now().toString())
-                ).withAuth(bossToken), FinishScanResponse::class.java
+                    FinishScanRequest(start.challenge, workerUser.id.toString(), java.time.Instant.now().toString())
+                ).withAuth(workerToken), FinishScanResponse::class.java
             )
-
-            val ex = assertThrows<HttpClientResponseException> {
-                client.toBlocking().retrieve(
-                    HttpRequest.POST(
-                        "/api/scan/finish",
-                        FinishScanRequest(start.challenge, "user-replay", java.time.Instant.now().toString())
-                    ).withAuth(bossToken), FinishScanResponse::class.java
-                )
-            }
-            ex.status shouldBe HttpStatus.CONFLICT
         }
+        ex.status shouldBe HttpStatus.CONFLICT
     }
-}
+})
+

@@ -1,0 +1,74 @@
+package ge.tiger8bit.controller
+
+import ge.tiger8bit.dto.CreateInvitationRequest
+import ge.tiger8bit.dto.InvitationResponse
+import ge.tiger8bit.getLogger
+import ge.tiger8bit.service.InvitationService
+import io.micronaut.http.HttpResponse
+import io.micronaut.http.annotation.*
+import io.micronaut.security.annotation.Secured
+import java.security.Principal
+import java.time.format.DateTimeFormatter
+import java.util.*
+
+@Controller("/api/invitations")
+class InvitationController(
+    private val invitationService: InvitationService
+) {
+    private val logger = getLogger()
+    private val formatter = DateTimeFormatter.ISO_INSTANT
+
+    @Post
+    @Secured("ROLE_BOSS", "ROLE_APP_OWNER")
+    fun createInvitation(
+        @Body request: CreateInvitationRequest,
+        principal: Principal
+    ): HttpResponse<InvitationResponse> {
+        logger.info("POST /api/invitations - email: {}, org: {}, role: {}", request.email, request.organizationId, request.role)
+
+        val userId = UUID.fromString(principal.name)
+
+        val invitation = invitationService.createInvitation(
+            email = request.email,
+            organizationId = request.organizationId,
+            role = request.role,
+            createdBy = userId
+        )
+
+        return HttpResponse.created(invitation.toResponse())
+    }
+
+    @Get
+    @Secured("ROLE_BOSS", "ROLE_APP_OWNER")
+    fun getInvitations(@QueryValue organizationId: UUID): HttpResponse<List<InvitationResponse>> {
+        logger.info("GET /api/invitations - org: {}", organizationId)
+
+        val invitations = invitationService.getOrganizationInvitations(organizationId)
+        return HttpResponse.ok(invitations.map { it.toResponse() })
+    }
+
+    @Delete("/{id}")
+    @Secured("ROLE_BOSS", "ROLE_APP_OWNER")
+    fun cancelInvitation(id: UUID): HttpResponse<Map<String, String>> {
+        logger.info("DELETE /api/invitations/{} - cancelling", id)
+
+        val success = invitationService.cancelInvitation(id)
+        return if (success) {
+            HttpResponse.ok(mapOf("status" to "cancelled"))
+        } else {
+            HttpResponse.notFound()
+        }
+    }
+
+    private fun ge.tiger8bit.domain.Invitation.toResponse(): InvitationResponse {
+        return InvitationResponse(
+            id = this.id!!,
+            email = this.email,
+            organizationId = this.organizationId,
+            role = this.role,
+            status = this.status,
+            expiresAt = formatter.format(this.expiresAt)
+        )
+    }
+}
+

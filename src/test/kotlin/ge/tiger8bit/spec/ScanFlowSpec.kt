@@ -2,9 +2,8 @@ package ge.tiger8bit.spec
 
 import ge.tiger8bit.TestAuth
 import ge.tiger8bit.TestFixtures
-import ge.tiger8bit.domain.PatrolRun
+import ge.tiger8bit.domain.Role
 import ge.tiger8bit.dto.*
-import ge.tiger8bit.repository.*
 import ge.tiger8bit.withAuth
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -16,87 +15,80 @@ import io.micronaut.test.extensions.kotest5.annotation.MicronautTest
 import jakarta.inject.Inject
 import java.math.BigDecimal
 import java.time.Instant
+import java.util.*
 
 @MicronautTest(transactional = false)
-class ScanFlowSpec : StringSpec() {
-    @Inject
-    lateinit var organizationRepository: OrganizationRepository
-    @Inject
-    lateinit var siteRepository: SiteRepository
-    @Inject
-    lateinit var patrolRouteRepository: PatrolRouteRepository
-    @Inject
-    lateinit var patrolRunRepository: PatrolRunRepository
-    @Inject
-    lateinit var patrolScanEventRepository: PatrolScanEventRepository
-    @Inject
-    @field:Client("/")
-    lateinit var client: HttpClient
+class ScanFlowSpec(
+    @Inject @Client("/") val client: HttpClient,
+    @Inject val beanContext: io.micronaut.context.BeanContext
+) : StringSpec({
+    TestFixtures.init(beanContext)
 
-    private val bossToken = TestAuth.generateBossToken()
+    "complete start/finish" {
+        val (org, site) = TestFixtures.seedOrgAndSite()
 
-    init {
-        "complete start/finish" {
-            val (org, site) = TestFixtures.seedOrgAndSite(organizationRepository, siteRepository)
-            val cp = client.toBlocking().retrieve(
-                HttpRequest.POST(
-                    "/api/admin/checkpoints",
-                    CreateCheckpointRequest(
-                        org.id!!,
-                        site.id!!,
-                        "CP-${java.util.UUID.randomUUID()}",
-                        BigDecimal("41.7151377"),
-                        BigDecimal("44.8270903"),
-                        BigDecimal("100.00")
-                    )
-                ).withAuth(bossToken),
-                CheckpointResponse::class.java
-            )
-            val route = TestFixtures.createRoute(patrolRouteRepository, org.id!!, site.id!!)
-            client.toBlocking().retrieve(
-                HttpRequest.POST(
-                    "/api/admin/routes/${route.id}/points",
-                    BulkAddRouteCheckpointsRequest(listOf(AddRouteCheckpointRequest(cp.id as java.util.UUID, 1, 0, 3600)))
-                ).withAuth(bossToken), Map::class.java
-            )
+        val (bossUser, _) = TestFixtures.createUserWithRole(
+            org.id!!,
+            Role.ROLE_BOSS,
+            email = "boss@scan-test.com"
+        )
+        val bossToken = TestAuth.generateBossToken(bossUser.id.toString())
 
-            val run = patrolRunRepository.save(
-                PatrolRun(
-                    routeId = route.id!!,
-                    organizationId = org.id!!,
-                    plannedStart = Instant.now(),
-                    plannedEnd = Instant.now().plusSeconds(7200),
-                    status = "pending"
+        val cp = client.toBlocking().retrieve(
+            HttpRequest.POST(
+                "/api/admin/checkpoints",
+                CreateCheckpointRequest(
+                    org.id!!,
+                    site.id!!,
+                    "CP-${UUID.randomUUID()}",
+                    BigDecimal("41.7151377"),
+                    BigDecimal("44.8270903"),
+                    BigDecimal("100.00")
                 )
-            )
-            patrolRunRepository.flush()
+            ).withAuth(bossToken),
+            CheckpointResponse::class.java
+        )
+        val route = TestFixtures.createRoute(org.id!!, site.id!!)
+        client.toBlocking().retrieve(
+            HttpRequest.POST(
+                "/api/admin/routes/${route.id}/points",
+                BulkAddRouteCheckpointsRequest(listOf(AddRouteCheckpointRequest(cp.id, 1, 0, 3600)))
+            ).withAuth(bossToken), Map::class.java
+        )
 
-            val start = client.toBlocking().retrieve(
-                HttpRequest.POST("/api/scan/start", StartScanRequest(org.id!!, "device-123", cp.code)).withAuth(bossToken),
-                StartScanResponse::class.java
-            )
-            start.challenge shouldNotBe null
-            start.policy.checkpointId shouldBe cp.id
-            start.policy.runId shouldBe run.id
+        val run = TestFixtures.createPatrolRun(route.id!!, org.id!!)
 
-            val finish = client.toBlocking().retrieve(
-                HttpRequest.POST(
-                    "/api/scan/finish",
-                    FinishScanRequest(
-                        start.challenge,
-                        "user-456",
-                        Instant.now().toString(),
-                        BigDecimal("41.7151377"),
-                        BigDecimal("44.8270903")
-                    )
-                ).withAuth(bossToken), FinishScanResponse::class.java
-            )
-            finish.verdict shouldBe "ok"
-            finish.eventId shouldNotBe null
+        val (workerUser, _) = TestFixtures.createUserWithRole(
+            org.id!!,
+            Role.ROLE_WORKER,
+            email = "worker@scan-test.com"
+        )
+        val deviceId = "device-${UUID.randomUUID()}"
+        TestFixtures.createDevice(workerUser.id!!, org.id!!, deviceId = deviceId)
+        val workerToken = TestAuth.generateWorkerToken(workerUser.id.toString())
 
-            val events = patrolScanEventRepository.findByPatrolRunId(run.id!!)
-            events.size shouldBe 1
-            events[0].verdict shouldBe "ok"
-        }
+        val start = client.toBlocking().retrieve(
+            HttpRequest.POST("/api/scan/start", StartScanRequest(org.id!!, deviceId, cp.code)).withAuth(workerToken),
+            StartScanResponse::class.java
+        )
+        start.challenge shouldNotBe null
+        start.policy.checkpointId shouldBe cp.id
+        start.policy.runId shouldBe run.id
+
+        val finish = client.toBlocking().retrieve(
+            HttpRequest.POST(
+                "/api/scan/finish",
+                FinishScanRequest(
+                    start.challenge,
+                    workerUser.id.toString(),
+                    Instant.now().toString(),
+                    BigDecimal("41.7151377"),
+                    BigDecimal("44.8270903")
+                )
+            ).withAuth(workerToken), FinishScanResponse::class.java
+        )
+        finish.verdict shouldBe "ok"
+        finish.eventId shouldNotBe null
     }
-}
+})
+

@@ -1,11 +1,86 @@
 -- Core schema for NFC Patrol System
 -- All IDs use UUID for better distributed system support
 
+-- Authentication & User Management
+CREATE TABLE users
+(
+    id         UUID PRIMARY KEY      DEFAULT gen_random_uuid(),
+    email      VARCHAR(255) NOT NULL UNIQUE,
+    google_id  VARCHAR(255) UNIQUE,
+    name       VARCHAR(200) NOT NULL,
+    created_at TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_users_email ON users (email);
+CREATE INDEX idx_users_google_id ON users (google_id);
+
+CREATE TABLE user_roles
+(
+    user_id         UUID        NOT NULL,
+    organization_id UUID        NOT NULL,
+    role            VARCHAR(50) NOT NULL,
+    created_at      TIMESTAMP   NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, organization_id),
+    CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_user_roles_user_id ON user_roles (user_id);
+CREATE INDEX idx_user_roles_organization_id ON user_roles (organization_id);
+
+CREATE TABLE devices
+(
+    id              UUID PRIMARY KEY      DEFAULT gen_random_uuid(),
+    user_id         UUID         NOT NULL,
+    organization_id UUID         NOT NULL,
+    device_id       VARCHAR(255) NOT NULL,
+    metadata        JSONB,
+    status          VARCHAR(50)  NOT NULL DEFAULT 'active',
+    registered_at   TIMESTAMP    NOT NULL DEFAULT NOW(),
+    last_used_at    TIMESTAMP,
+    created_at      TIMESTAMP    NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_devices_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    UNIQUE (organization_id, device_id)
+);
+
+CREATE INDEX idx_devices_user_id ON devices (user_id);
+CREATE INDEX idx_devices_organization_id ON devices (organization_id);
+CREATE INDEX idx_devices_device_id ON devices (device_id);
+
+CREATE TABLE invitations
+(
+    id              UUID PRIMARY KEY      DEFAULT gen_random_uuid(),
+    email           VARCHAR(255) NOT NULL,
+    organization_id UUID         NOT NULL,
+    role            VARCHAR(50)  NOT NULL,
+    token           VARCHAR(255) NOT NULL UNIQUE,
+    status          VARCHAR(50)  NOT NULL DEFAULT 'pending',
+    created_by      UUID,
+    created_at      TIMESTAMP    NOT NULL DEFAULT NOW(),
+    expires_at      TIMESTAMP    NOT NULL,
+    accepted_at     TIMESTAMP,
+    CONSTRAINT fk_invitations_created_by FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_invitations_email ON invitations (email);
+CREATE INDEX idx_invitations_organization_id ON invitations (organization_id);
+CREATE INDEX idx_invitations_token ON invitations (token);
+CREATE INDEX idx_invitations_status ON invitations (status);
+
+-- Organizations & Sites
 CREATE TABLE organizations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(200) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- Add foreign key constraint for user_roles after organizations table exists
+ALTER TABLE user_roles
+    ADD CONSTRAINT fk_user_roles_organization FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE;
+ALTER TABLE devices
+    ADD CONSTRAINT fk_devices_organization FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE;
+ALTER TABLE invitations
+    ADD CONSTRAINT fk_invitations_organization FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE;
 
 CREATE TABLE sites (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

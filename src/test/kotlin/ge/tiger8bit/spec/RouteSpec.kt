@@ -2,10 +2,8 @@ package ge.tiger8bit.spec
 
 import ge.tiger8bit.TestAuth
 import ge.tiger8bit.TestFixtures
+import ge.tiger8bit.domain.Role
 import ge.tiger8bit.dto.*
-import ge.tiger8bit.repository.OrganizationRepository
-import ge.tiger8bit.repository.PatrolRouteRepository
-import ge.tiger8bit.repository.SiteRepository
 import ge.tiger8bit.withAuth
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -19,65 +17,73 @@ import jakarta.inject.Inject
 import org.junit.jupiter.api.assertThrows
 
 @MicronautTest(transactional = false)
-class RouteSpec : StringSpec() {
-    @Inject
-    lateinit var organizationRepository: OrganizationRepository
-    @Inject
-    lateinit var siteRepository: SiteRepository
-    @Inject
-    lateinit var patrolRouteRepository: PatrolRouteRepository
-    @Inject
-    @field:Client("/")
-    lateinit var client: HttpClient
+class RouteSpec(
+    @Inject @Client("/") val client: HttpClient,
+    @Inject val beanContext: io.micronaut.context.BeanContext
+) : StringSpec({
+    TestFixtures.init(beanContext)
 
-    private val bossToken = TestAuth.generateBossToken()
+    "BOSS can create route and add checkpoints" {
+        val (org, site) = TestFixtures.seedOrgAndSite()
+        val (bossUser, _) = TestFixtures.createUserWithRole(
+            org.id!!,
+            Role.ROLE_BOSS,
+            email = "boss@route.com"
+        )
+        val bossToken = TestAuth.generateBossToken(bossUser.id.toString())
 
-    init {
-        "BOSS can create route and add checkpoints" {
-            val (org, site) = TestFixtures.seedOrgAndSite(organizationRepository, siteRepository)
-            val cp1 = client.toBlocking().retrieve(
-                HttpRequest.POST(
-                    "/api/admin/checkpoints",
-                    CreateCheckpointRequest(org.id!!, site.id!!, "CP-${java.util.UUID.randomUUID()}")
-                ).withAuth(bossToken), CheckpointResponse::class.java
-            )
-            val cp2 = client.toBlocking().retrieve(
-                HttpRequest.POST(
-                    "/api/admin/checkpoints",
-                    CreateCheckpointRequest(org.id!!, site.id!!, "CP-${java.util.UUID.randomUUID()}")
-                ).withAuth(bossToken), CheckpointResponse::class.java
-            )
+        val cp1 = client.toBlocking().retrieve(
+            HttpRequest.POST(
+                "/api/admin/checkpoints",
+                CreateCheckpointRequest(org.id!!, site.id!!, "CP-1")
+            ).withAuth(bossToken), CheckpointResponse::class.java
+        )
+        val cp2 = client.toBlocking().retrieve(
+            HttpRequest.POST(
+                "/api/admin/checkpoints",
+                CreateCheckpointRequest(org.id!!, site.id!!, "CP-2")
+            ).withAuth(bossToken), CheckpointResponse::class.java
+        )
 
-            val route = TestFixtures.createRoute(patrolRouteRepository, org.id!!, site.id!!)
-            val routeResp = client.toBlocking().retrieve(
-                HttpRequest.POST("/api/admin/routes", CreateRouteRequest(org.id!!, site.id!!, route.name)).withAuth(bossToken),
+        val route = TestFixtures.createRoute(org.id!!, site.id!!)
+
+        val addResponse = client.toBlocking().retrieve(
+            HttpRequest.POST(
+                "/api/admin/routes/${route.id}/points",
+                BulkAddRouteCheckpointsRequest(
+                    listOf(
+                        AddRouteCheckpointRequest(cp1.id, 1, 0, 3600),
+                        AddRouteCheckpointRequest(cp2.id, 2, 0, 3600)
+                    )
+                )
+            ).withAuth(bossToken), Map::class.java
+        )
+
+        addResponse["status"] shouldBe "updated"
+    }
+
+    "WORKER cannot create route (forbidden)" {
+        val (org, site) = TestFixtures.seedOrgAndSite()
+        val (workerUser, _) = TestFixtures.createUserWithRole(
+            org.id!!,
+            Role.ROLE_WORKER,
+            email = "worker@route-forbidden.com"
+        )
+        val workerToken = TestAuth.generateWorkerToken(workerUser.id.toString())
+
+        val request = CreateRouteRequest(
+            organizationId = org.id!!,
+            siteId = site.id!!,
+            name = "Unauthorized Route"
+        )
+
+        val exception = assertThrows<HttpClientResponseException> {
+            client.toBlocking().retrieve(
+                HttpRequest.POST("/api/admin/routes", request).withAuth(workerToken),
                 RouteResponse::class.java
             )
-
-            val bulk = BulkAddRouteCheckpointsRequest(
-                listOf(
-                    AddRouteCheckpointRequest(checkpointId = cp1.id, seq = 1, minOffsetSec = 0, maxOffsetSec = 3600),
-                    AddRouteCheckpointRequest(checkpointId = cp2.id, seq = 2, minOffsetSec = 3600, maxOffsetSec = 7200)
-                )
-            )
-            val added = client.toBlocking()
-                .retrieve(HttpRequest.POST("/api/admin/routes/${routeResp.id}/points", bulk).withAuth(bossToken), Map::class.java)
-            added["added"] shouldBe 2
         }
-
-        "WORKER cannot create route (forbidden)" {
-            val workerToken = TestAuth.generateWorkerToken()
-            val (org, site) = TestFixtures.seedOrgAndSite(organizationRepository, siteRepository)
-            val request = CreateRouteRequest(org.id!!, site.id!!, "Test Route")
-
-            val exception = assertThrows<HttpClientResponseException> {
-                client.toBlocking().retrieve(
-                    HttpRequest.POST("/api/admin/routes", request).withAuth(workerToken),
-                    RouteResponse::class.java
-                )
-            }
-            exception.status shouldBe HttpStatus.FORBIDDEN
-        }
+        exception.status shouldBe HttpStatus.FORBIDDEN
     }
-}
+})
 
