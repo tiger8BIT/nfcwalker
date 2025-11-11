@@ -126,6 +126,7 @@ tasks.register<Copy>("copyOpenApi") {
     from(layout.buildDirectory.dir("generated/ksp/main/resources/META-INF/swagger"))
     into(openApiTargetDir)
     rename { "openapi.yml" }
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 tasks.named("build") {

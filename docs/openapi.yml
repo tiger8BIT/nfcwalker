@@ -117,6 +117,122 @@ paths:
                 type: object
                 additionalProperties:
                   type: object
+  /api/devices:
+    get:
+      operationId: getUserDevices
+      parameters:
+      - name: organizationId
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: getUserDevices 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DeviceResponse"
+    post:
+      operationId: registerDevice
+      parameters:
+      - name: organizationId
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterDeviceRequest"
+        required: true
+      responses:
+        "200":
+          description: registerDevice 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceResponse"
+  /api/devices/{id}:
+    delete:
+      operationId: revokeDevice
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: revokeDevice 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+  /api/invitations:
+    get:
+      operationId: getInvitations
+      parameters:
+      - name: organizationId
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: getInvitations 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InvitationResponse"
+    post:
+      operationId: createInvitation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvitationRequest"
+        required: true
+      responses:
+        "200":
+          description: createInvitation 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationResponse"
+  /api/invitations/{id}:
+    delete:
+      operationId: cancelInvitation
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: cancelInvitation 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
   /api/organizations:
     get:
       operationId: listOrganizations
@@ -325,8 +441,57 @@ paths:
                 type: object
                 additionalProperties:
                   type: object
+  /auth/health:
+    get:
+      operationId: health
+      responses:
+        "200":
+          description: health 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+  /auth/invite/accept:
+    post:
+      operationId: acceptInvitation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptInvitationRequest"
+        required: true
+      responses:
+        "200":
+          description: acceptInvitation 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+  /auth/me:
+    get:
+      operationId: getMe
+      responses:
+        "200":
+          description: getMe 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
 components:
   schemas:
+    AcceptInvitationRequest:
+      required:
+      - token
+      type: object
+      properties:
+        token:
+          type: string
     AddRouteCheckpointRequest:
       required:
       - checkpointId
@@ -408,6 +573,20 @@ components:
         radiusM:
           type: number
           nullable: true
+    CreateInvitationRequest:
+      required:
+      - email
+      - organizationId
+      - role
+      type: object
+      properties:
+        email:
+          type: string
+        organizationId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/Role"
     CreateOrganizationRequest:
       required:
       - name
@@ -441,6 +620,29 @@ components:
           format: uuid
         name:
           type: string
+    DeviceResponse:
+      required:
+      - deviceId
+      - id
+      - registeredAt
+      - status
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        deviceId:
+          type: string
+        metadata:
+          type: string
+          nullable: true
+        status:
+          type: string
+        registeredAt:
+          type: string
+        lastUsedAt:
+          type: string
+          nullable: true
     FinishScanRequest:
       required:
       - challenge
@@ -484,6 +686,30 @@ components:
           type: number
         radiusM:
           type: number
+    InvitationResponse:
+      required:
+      - email
+      - expiresAt
+      - id
+      - organizationId
+      - role
+      - status
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        organizationId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/Role"
+        status:
+          type: string
+        expiresAt:
+          type: string
     OrganizationResponse:
       required:
       - createdAt
@@ -499,6 +725,22 @@ components:
         createdAt:
           type: string
           format: date-time
+    RegisterDeviceRequest:
+      required:
+      - deviceId
+      type: object
+      properties:
+        deviceId:
+          type: string
+        metadata:
+          type: string
+          nullable: true
+    Role:
+      type: string
+      enum:
+      - ROLE_APP_OWNER
+      - ROLE_BOSS
+      - ROLE_WORKER
     RouteResponse:
       required:
       - id
