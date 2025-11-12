@@ -1,8 +1,6 @@
 package ge.tiger8bit.spec
 
-import ge.tiger8bit.TestAuth
 import ge.tiger8bit.TestFixtures
-import ge.tiger8bit.domain.Role
 import ge.tiger8bit.dto.CreateOrganizationRequest
 import ge.tiger8bit.dto.OrganizationResponse
 import ge.tiger8bit.withAuth
@@ -18,75 +16,64 @@ import io.micronaut.http.client.exceptions.HttpClientResponseException
 import io.micronaut.test.extensions.kotest5.annotation.MicronautTest
 import jakarta.inject.Inject
 import org.junit.jupiter.api.assertThrows
-import java.util.*
 
 @MicronautTest(transactional = false)
-class OrganizationSpec(
-    @Inject @Client("/") val client: HttpClient,
-    @Inject val beanContext: io.micronaut.context.BeanContext
-) : StringSpec({
-    TestFixtures.init(beanContext)
+class OrganizationSpec @Inject constructor(
+    @Client("/") client: HttpClient,
+    beanContext: io.micronaut.context.BeanContext
+) : BaseApiSpec(client, beanContext) {
+    override fun StringSpec.registerTests() {
+        "APP_OWNER can create organization" {
+            val (appOwnerToken, _) = createAppOwnerToken(email = "app-owner@org-create.com")
+            val request = CreateOrganizationRequest(name = "Test Security Company")
 
-    val (testOrg, _) = TestFixtures.seedOrgAndSite()
+            val response = client.toBlocking()
+                .retrieve(
+                    HttpRequest.POST("/api/organizations", request).withAuth(appOwnerToken),
+                    OrganizationResponse::class.java
+                )
 
-    val (appOwnerUser, _) = TestFixtures.createUserWithRole(
-        testOrg.id!!,
-        Role.ROLE_APP_OWNER,
-        email = "app-owner@org-test.com"
-    )
-    val appOwnerToken = TestAuth.generateAppOwnerToken(appOwnerUser.id.toString())
+            response.name shouldBe request.name
+            response.id shouldNotBe null
+        }
 
-    val (bossUser, _) = TestFixtures.createUserWithRole(
-        testOrg.id!!,
-        Role.ROLE_BOSS,
-        email = "boss@org-test.com"
-    )
-    val bossToken = TestAuth.generateBossToken(bossUser.id.toString())
+        "APP_OWNER can list all organizations" {
+            val (appOwnerToken, _) = createAppOwnerToken(email = "app-owner@org-list.com")
 
-    "APP_OWNER can create organization" {
-        val request = CreateOrganizationRequest(
-            name = "Test Security Company ${UUID.randomUUID()}"
-        )
-        val response = client.toBlocking()
-            .retrieve(
-                HttpRequest.POST("/api/organizations", request).withAuth(appOwnerToken),
+            val org1 = CreateOrganizationRequest(name = "Org 1")
+            val org2 = CreateOrganizationRequest(name = "Org 2")
+
+            client.toBlocking().retrieve(
+                HttpRequest.POST("/api/organizations", org1).withAuth(appOwnerToken),
                 OrganizationResponse::class.java
             )
-        response.name shouldBe request.name
-        response.id shouldNotBe null
-    }
-
-    "APP_OWNER can list all organizations" {
-        val org1 = CreateOrganizationRequest(name = "Org 1 ${UUID.randomUUID()}")
-        val org2 = CreateOrganizationRequest(name = "Org 2 ${UUID.randomUUID()}")
-
-        client.toBlocking().retrieve(
-            HttpRequest.POST("/api/organizations", org1).withAuth(appOwnerToken),
-            OrganizationResponse::class.java
-        )
-        client.toBlocking().retrieve(
-            HttpRequest.POST("/api/organizations", org2).withAuth(appOwnerToken),
-            OrganizationResponse::class.java
-        )
-
-        val list = client.toBlocking().retrieve(
-            HttpRequest.GET<Any>("/api/organizations").withAuth(appOwnerToken),
-            Array<OrganizationResponse>::class.java
-        ).toList()
-
-        list.size shouldBeGreaterThanOrEqualTo 2
-        list.any { it.name == org1.name } shouldBe true
-        list.any { it.name == org2.name } shouldBe true
-    }
-
-    "BOSS cannot access organization endpoints (forbidden)" {
-        val exception = assertThrows<HttpClientResponseException> {
             client.toBlocking().retrieve(
-                HttpRequest.GET<Any>("/api/organizations").withAuth(bossToken),
-                Array<OrganizationResponse>::class.java
+                HttpRequest.POST("/api/organizations", org2).withAuth(appOwnerToken),
+                OrganizationResponse::class.java
             )
-        }
-        exception.status shouldBe HttpStatus.FORBIDDEN
-    }
-})
 
+            val list = client.toBlocking().retrieve(
+                HttpRequest.GET<Any>("/api/organizations").withAuth(appOwnerToken),
+                Array<OrganizationResponse>::class.java
+            ).toList()
+
+            list.size shouldBeGreaterThanOrEqualTo 2
+            list.any { it.name == org1.name } shouldBe true
+            list.any { it.name == org2.name } shouldBe true
+        }
+
+        "BOSS cannot access organization endpoints (forbidden)" {
+            val (org, _) = TestFixtures.seedOrgAndSite()
+            val (bossToken, _) = createBossToken(org.id!!, email = "boss@org-forbidden.com")
+
+            val exception = assertThrows<HttpClientResponseException> {
+                client.toBlocking().retrieve(
+                    HttpRequest.GET<Any>("/api/organizations").withAuth(bossToken),
+                    Array<OrganizationResponse>::class.java
+                )
+            }
+
+            exception.status shouldBe HttpStatus.FORBIDDEN
+        }
+    }
+}

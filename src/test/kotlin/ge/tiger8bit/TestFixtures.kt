@@ -28,6 +28,12 @@ object TestFixtures {
     private val patrolRunRepository: PatrolRunRepository
         get() = beanContext.getBean(PatrolRunRepository::class.java)
 
+    fun createOrganization(name: String = "Test Org ${UUID.randomUUID()}"): Organization {
+        val org = organizationRepository.save(Organization(name = name))
+        organizationRepository.flush()
+        return org
+    }
+
     fun cleanupChallengeUsed(challengeUsedRepository: ChallengeUsedRepository) {
         try {
             challengeUsedRepository.deleteAll()
