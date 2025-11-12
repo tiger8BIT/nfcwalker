@@ -8,23 +8,29 @@ import ge.tiger8bit.getLogger
 import ge.tiger8bit.repository.CheckpointRepository
 import ge.tiger8bit.repository.PatrolRouteCheckpointRepository
 import ge.tiger8bit.repository.PatrolRouteRepository
+import ge.tiger8bit.service.AccessService
 import io.micronaut.http.annotation.*
 import io.micronaut.security.annotation.Secured
 import jakarta.transaction.Transactional
+import java.security.Principal
 import java.util.*
 
 @Controller("/api/admin")
-@Secured("ROLE_BOSS")
+@Secured("ROLE_BOSS", "ROLE_APP_OWNER")
 open class AdminController(
     private val checkpointRepository: CheckpointRepository,
     private val patrolRouteRepository: PatrolRouteRepository,
-    private val patrolRouteCheckpointRepository: PatrolRouteCheckpointRepository
+    private val patrolRouteCheckpointRepository: PatrolRouteCheckpointRepository,
+    private val accessService: AccessService
 ) {
     private val logger = getLogger()
 
     @Post("/checkpoints")
     @Transactional
-    open fun createCheckpoint(@Body request: CreateCheckpointRequest): CheckpointResponse {
+    open fun createCheckpoint(@Body request: CreateCheckpointRequest, principal: Principal): CheckpointResponse {
+        val userId = UUID.fromString(principal.name)
+        accessService.ensureBossOrAppOwner(userId, request.organizationId)
+
         logger.info("Creating checkpoint: code={}, orgId={}, siteId={}", request.code, request.organizationId, request.siteId)
 
         val checkpoint = checkpointRepository.save(
@@ -43,18 +49,22 @@ open class AdminController(
     }
 
     @Get("/checkpoints")
-    fun listCheckpoints(@QueryValue siteId: UUID): List<CheckpointResponse> {
-        logger.info("Listing checkpoints for site: {}", siteId)
-
+    fun listCheckpoints(@QueryValue siteId: UUID, principal: Principal): List<CheckpointResponse> {
         val checkpoints = checkpointRepository.findBySiteId(siteId)
-        logger.info("Found {} checkpoints in site: {}", checkpoints.size, siteId)
-
+        // If there are no checkpoints, just return empty (avoid 404). If present, check org of first.
+        if (checkpoints.isNotEmpty()) {
+            val userId = java.util.UUID.fromString(principal.name)
+            accessService.ensureBossOrAppOwner(userId, checkpoints.first().organizationId)
+        }
         return checkpoints.map { it.toResponse() }
     }
 
     @Post("/routes")
     @Transactional
-    open fun createRoute(@Body request: CreateRouteRequest): RouteResponse {
+    open fun createRoute(@Body request: CreateRouteRequest, principal: Principal): RouteResponse {
+        val userId = java.util.UUID.fromString(principal.name)
+        accessService.ensureBossOrAppOwner(userId, request.organizationId)
+
         logger.info("Creating route: name={}, orgId={}, siteId={}", request.name, request.organizationId, request.siteId)
 
         val route = patrolRouteRepository.save(
@@ -73,8 +83,18 @@ open class AdminController(
     @Transactional
     open fun addCheckpointsToRoute(
         @PathVariable id: UUID,
-        @Body request: BulkAddRouteCheckpointsRequest
+        @Body request: BulkAddRouteCheckpointsRequest,
+        principal: Principal
     ): Map<String, Any> {
+        val route = patrolRouteRepository.findById(id).orElseThrow {
+            io.micronaut.http.exceptions.HttpStatusException(
+                io.micronaut.http.HttpStatus.NOT_FOUND,
+                "Route not found"
+            )
+        }
+        val userId = java.util.UUID.fromString(principal.name)
+        accessService.ensureBossOrAppOwner(userId, route.organizationId)
+
         logger.info("Adding {} checkpoints to route: {}", request.checkpoints.size, id)
 
         val checkpoints = request.checkpoints.map { it.toEntity(id) }
@@ -86,16 +106,17 @@ open class AdminController(
 
     @Delete("/routes/{id}")
     @Transactional
-    open fun deleteRoute(@PathVariable id: UUID): Map<String, String> {
-        logger.info("Deleting route: {}", id)
-
-        if (!patrolRouteRepository.existsById(id)) {
-            logger.warn("Route not found: {}", id)
-            throw io.micronaut.http.exceptions.HttpStatusException(
+    open fun deleteRoute(@PathVariable id: UUID, principal: Principal): Map<String, String> {
+        val route = patrolRouteRepository.findById(id).orElseThrow {
+            io.micronaut.http.exceptions.HttpStatusException(
                 io.micronaut.http.HttpStatus.NOT_FOUND,
                 "Route not found"
             )
         }
+        val userId = java.util.UUID.fromString(principal.name)
+        accessService.ensureBossOrAppOwner(userId, route.organizationId)
+
+        logger.info("Deleting route: {}", id)
 
         // First delete all route checkpoints (due to foreign key constraints)
         patrolRouteCheckpointRepository.deleteByRouteId(id)
@@ -110,16 +131,17 @@ open class AdminController(
 
     @Delete("/checkpoints/{id}")
     @Transactional
-    open fun deleteCheckpoint(@PathVariable id: UUID): Map<String, String> {
-        logger.info("Deleting checkpoint: {}", id)
-
-        if (!checkpointRepository.existsById(id)) {
-            logger.warn("Checkpoint not found: {}", id)
-            throw io.micronaut.http.exceptions.HttpStatusException(
+    open fun deleteCheckpoint(@PathVariable id: UUID, principal: Principal): Map<String, String> {
+        val checkpoint = checkpointRepository.findById(id).orElseThrow {
+            io.micronaut.http.exceptions.HttpStatusException(
                 io.micronaut.http.HttpStatus.NOT_FOUND,
                 "Checkpoint not found"
             )
         }
+        val userId = java.util.UUID.fromString(principal.name)
+        accessService.ensureBossOrAppOwner(userId, checkpoint.organizationId)
+
+        logger.info("Deleting checkpoint: {}", id)
 
         // First delete all route checkpoint associations
         patrolRouteCheckpointRepository.deleteByCheckpointId(id)

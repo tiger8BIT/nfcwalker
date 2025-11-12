@@ -79,5 +79,7 @@ open class InvitationService(
         }
         return false
     }
-}
 
+    fun getInvitationById(id: UUID): Invitation? =
+        invitationRepository.findById(id).orElse(null)
+}

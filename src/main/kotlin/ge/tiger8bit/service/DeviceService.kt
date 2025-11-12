@@ -71,5 +71,6 @@ open class DeviceService(
         return deviceRepository.findByOrganizationIdAndDeviceId(organizationId, deviceId)
             .orElse(null)
     }
-}
 
+    fun getDeviceEntity(id: UUID): Device? = deviceRepository.findById(id).orElse(null)
+}

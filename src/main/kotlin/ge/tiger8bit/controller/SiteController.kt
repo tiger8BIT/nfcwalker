@@ -1,24 +1,32 @@
 package ge.tiger8bit.controller
 
 import ge.tiger8bit.domain.Site
-import ge.tiger8bit.dto.*
-import ge.tiger8bit.repository.SiteRepository
+import ge.tiger8bit.dto.CreateSiteRequest
+import ge.tiger8bit.dto.SiteResponse
+import ge.tiger8bit.dto.UpdateSiteRequest
 import ge.tiger8bit.getLogger
+import ge.tiger8bit.repository.SiteRepository
+import ge.tiger8bit.service.AccessService
 import io.micronaut.http.annotation.*
-import jakarta.transaction.Transactional
 import io.micronaut.security.annotation.Secured
-import java.util.UUID
+import jakarta.transaction.Transactional
+import java.security.Principal
+import java.util.*
 
 @Controller("/api/sites")
-@Secured("ROLE_BOSS")
+@Secured("ROLE_BOSS", "ROLE_APP_OWNER")
 open class SiteController(
-    private val siteRepository: SiteRepository
+    private val siteRepository: SiteRepository,
+    private val accessService: AccessService
 ) {
     private val logger = getLogger()
 
     @Post
     @Transactional
-    open fun createSite(@Body request: CreateSiteRequest): SiteResponse {
+    open fun createSite(@Body request: CreateSiteRequest, principal: Principal): SiteResponse {
+        val userId = UUID.fromString(principal.name)
+        accessService.ensureBossOrAppOwner(userId, request.organizationId)
+
         logger.info("Creating site: name={}, organizationId={}", request.name, request.organizationId)
 
         val site = siteRepository.save(
@@ -33,7 +41,10 @@ open class SiteController(
     }
 
     @Get
-    fun listSites(@QueryValue organizationId: UUID): List<SiteResponse> {
+    fun listSites(@QueryValue organizationId: UUID, principal: Principal): List<SiteResponse> {
+        val userId = UUID.fromString(principal.name)
+        accessService.ensureBossOrAppOwner(userId, organizationId)
+
         logger.info("Listing sites for organization: {}", organizationId)
 
         val sites = siteRepository.findByOrganizationId(organizationId)
@@ -43,24 +54,28 @@ open class SiteController(
     }
 
     @Get("/{id}")
-    fun getSite(@PathVariable id: UUID): SiteResponse? {
+    fun getSite(@PathVariable id: UUID, principal: Principal): SiteResponse? {
+        val site = siteRepository.findById(id).orElse(null) ?: return null
+        val userId = UUID.fromString(principal.name)
+        accessService.ensureBossOrAppOwner(userId, site.organizationId)
+
         logger.info("Getting site: {}", id)
 
-        val site = siteRepository.findById(id).orElse(null)
-        return site?.toResponse()
+        return site.toResponse()
     }
 
     @Put("/{id}")
     @Transactional
     open fun updateSite(
         @PathVariable id: UUID,
-        @Body request: UpdateSiteRequest
+        @Body request: UpdateSiteRequest,
+        principal: Principal
     ): SiteResponse {
-        logger.info("Updating site: id={}, name={}", id, request.name)
+        val site = siteRepository.findById(id).orElseThrow { IllegalArgumentException("Site not found: $id") }
+        val userId = UUID.fromString(principal.name)
+        accessService.ensureBossOrAppOwner(userId, site.organizationId)
 
-        val site = siteRepository.findById(id).orElseThrow {
-            IllegalArgumentException("Site not found: $id")
-        }
+        logger.info("Updating site: id={}, name={}", id, request.name)
 
         site.name = request.name
 
@@ -72,7 +87,11 @@ open class SiteController(
 
     @Delete("/{id}")
     @Transactional
-    open fun deleteSite(@PathVariable id: UUID): Map<String, Any> {
+    open fun deleteSite(@PathVariable id: UUID, principal: Principal): Map<String, Any> {
+        val site = siteRepository.findById(id).orElseThrow { IllegalArgumentException("Site not found: $id") }
+        val userId = UUID.fromString(principal.name)
+        accessService.ensureBossOrAppOwner(userId, site.organizationId)
+
         logger.info("Deleting site: {}", id)
 
         siteRepository.deleteById(id)
@@ -90,4 +109,3 @@ open class SiteController(
         createdAt = createdAt
     )
 }
-

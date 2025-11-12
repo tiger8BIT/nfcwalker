@@ -1,22 +1,29 @@
 package ge.tiger8bit.controller
 
 import ge.tiger8bit.domain.Checkpoint
-import ge.tiger8bit.domain.PatrolRun
 import ge.tiger8bit.domain.PatrolRouteCheckpoint
+import ge.tiger8bit.domain.PatrolRun
 import ge.tiger8bit.domain.PatrolScanEvent
 import ge.tiger8bit.dto.*
-import ge.tiger8bit.repository.*
+import ge.tiger8bit.getLogger
+import ge.tiger8bit.repository.CheckpointRepository
+import ge.tiger8bit.repository.PatrolRouteCheckpointRepository
+import ge.tiger8bit.repository.PatrolRunRepository
+import ge.tiger8bit.repository.PatrolScanEventRepository
+import ge.tiger8bit.service.AccessService
 import ge.tiger8bit.service.ChallengeService
 import ge.tiger8bit.service.ValidationResult
-import ge.tiger8bit.getLogger
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.HttpStatus
-import io.micronaut.http.annotation.*
+import io.micronaut.http.annotation.Body
+import io.micronaut.http.annotation.Controller
+import io.micronaut.http.annotation.Post
 import io.micronaut.http.exceptions.HttpStatusException
-import jakarta.transaction.Transactional
 import io.micronaut.security.annotation.Secured
+import jakarta.transaction.Transactional
+import java.security.Principal
 import java.time.Instant
-import java.util.UUID
+import java.util.*
 
 @Controller("/api/scan")
 @Secured("ROLE_WORKER","ROLE_BOSS")
@@ -25,13 +32,17 @@ open class ScanController(
     private val patrolRunRepository: PatrolRunRepository,
     private val patrolRouteCheckpointRepository: PatrolRouteCheckpointRepository,
     private val patrolScanEventRepository: PatrolScanEventRepository,
-    private val challengeService: ChallengeService
+    private val challengeService: ChallengeService,
+    private val accessService: AccessService
 ) {
     private val logger = getLogger()
 
     @Post("/start")
     @Transactional
-    open fun startScan(@Body request: StartScanRequest): StartScanResponse {
+    open fun startScan(@Body request: StartScanRequest, principal: Principal): StartScanResponse {
+        val userId = UUID.fromString(principal.name)
+        accessService.ensureWorkerOrBoss(userId, request.organizationId)
+
         logger.info("Start scan: cpCode={}, device={}, org={}", request.checkpointCode, request.deviceId, request.organizationId)
 
         val checkpoint = checkpointRepository.findByCode(request.checkpointCode)
@@ -68,10 +79,10 @@ open class ScanController(
 
     @Post("/finish")
     @Transactional
-    open fun finishScan(@Body request: FinishScanRequest): HttpResponse<FinishScanResponse> {
-        logger.info("Finish scan: user={}", request.userId)
-
+    open fun finishScan(@Body request: FinishScanRequest, principal: Principal): HttpResponse<FinishScanResponse> {
         val (orgId, deviceId, checkpointId) = parseChallenge(request.challenge)
+        val userId = UUID.fromString(principal.name)
+        accessService.ensureWorkerOrBoss(userId, orgId)
 
         when (val result = challengeService.validateAndConsume(request.challenge, orgId, deviceId, checkpointId)) {
             is ValidationResult.Invalid -> {
