@@ -41,3 +41,16 @@ fun createAppOwnerToken(
     )
     return TestAuth.generateAppOwnerToken(user.id.toString()) to user.id!!
 }
+
+fun createAppOwnerTokenForOrg(
+    orgId: UUID,
+    email: String = "app-owner@test.com"
+): Pair<String, UUID> {
+    val (user, _) = TestFixtures.createUserWithRole(
+        orgId,
+        Role.ROLE_APP_OWNER,
+        email = email
+    )
+    return TestAuth.generateAppOwnerToken(user.id.toString()) to user.id!!
+}
+

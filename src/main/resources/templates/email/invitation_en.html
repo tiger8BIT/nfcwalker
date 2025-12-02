@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #333;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      background-color: #f0f0f0;
+      padding: 20px;
+      border-radius: 5px;
+    }
+
+    .content {
+      padding: 20px 0;
+    }
+
+    .cta-button {
+      display: inline-block;
+      background-color: #007bff;
+      color: white;
+      padding: 12px 30px;
+      text-decoration: none;
+      border-radius: 5px;
+      margin: 20px 0;
+    }
+
+    .footer {
+      color: #666;
+      font-size: 12px;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h2>Welcome to {{appName}}</h2>
+  </div>
+  <div class="content">
+    <p>Hi,</p>
+    <p><strong>{{inviterName}}</strong> has invited you to join <strong>{{appName}}</strong>.</p>
+    <p>Click the button below to accept your invitation:</p>
+    <p>
+      <a class="cta-button" href="{{invitationUrl}}">Accept Invitation</a>
+    </p>
+    <p style="font-size: 12px; color: #666;">
+      Or copy and paste this link:<br/>
+      <code style="background-color: #f5f5f5; padding: 2px 5px;">{{invitationUrl}}</code>
+    </p>
+  </div>
+  <div class="footer">
+    <p>&copy; 2025 {{appName}}. All rights reserved.</p>
+  </div>
+</div>
+</body>
+</html>
+

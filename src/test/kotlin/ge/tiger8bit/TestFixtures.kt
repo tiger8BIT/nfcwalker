@@ -109,6 +109,22 @@ object TestFixtures {
         return user to userRole
     }
 
+    fun createUser(
+        email: String = "user-${UUID.randomUUID()}@test.com",
+        name: String = "Test User",
+        googleId: String? = "google-${UUID.randomUUID()}"
+    ): User {
+        val user = userRepository.save(
+            User(
+                email = email,
+                name = name,
+                googleId = googleId
+            )
+        )
+        userRepository.flush()
+        return user
+    }
+
     fun createDevice(
         userId: UUID,
         organizationId: UUID,

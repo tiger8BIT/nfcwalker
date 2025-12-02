@@ -31,7 +31,19 @@ datasources:
     driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
     db-type: postgres
 
+mail:
+  smtp:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    auth: ${SMTP_AUTH:false}
+    from: ${MAIL_FROM:noreply@nfcwalker.com}
+
 app:
+  name: ${APP_NAME:NFC Walker}
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  email:
+    default-language: ${APP_EMAIL_DEFAULT_LANGUAGE:en}
+  template-base: templates
   # Use a 32-byte (256-bit) secret for challenge signing in tests to satisfy HS256
   challenge:
     secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef

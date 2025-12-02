@@ -1,11 +1,14 @@
 package ge.tiger8bit.controller
 
+import ge.tiger8bit.domain.Invitation
 import ge.tiger8bit.dto.CreateInvitationRequest
 import ge.tiger8bit.dto.InvitationResponse
 import ge.tiger8bit.getLogger
 import ge.tiger8bit.service.AccessService
+import ge.tiger8bit.service.AuthService
 import ge.tiger8bit.service.InvitationService
 import io.micronaut.http.HttpResponse
+import io.micronaut.http.HttpStatus
 import io.micronaut.http.annotation.*
 import io.micronaut.security.annotation.Secured
 import java.security.Principal
@@ -15,6 +18,7 @@ import java.util.*
 @Controller("/api/invitations")
 class InvitationController(
     private val invitationService: InvitationService,
+    private val authService: AuthService,
     private val accessService: AccessService
 ) {
     private val logger = getLogger()
@@ -26,16 +30,25 @@ class InvitationController(
         @Body request: CreateInvitationRequest,
         principal: Principal
     ): HttpResponse<InvitationResponse> {
-        logger.info("POST /api/invitations - email: {}, org: {}, role: {}", request.email, request.organizationId, request.role)
+        logger.info(
+            "POST /api/invitations - email: {}, org: {}, role: {}",
+            request.email,
+            request.organizationId,
+            request.role
+        )
 
         val userId = UUID.fromString(principal.name)
         accessService.ensureBossOrAppOwner(userId, request.organizationId)
+
+        val inviterRole = authService.getUserRole(userId, request.organizationId)
+            ?: return HttpResponse.status<InvitationResponse>(HttpStatus.FORBIDDEN)
 
         val invitation = invitationService.createInvitation(
             email = request.email,
             organizationId = request.organizationId,
             role = request.role,
-            createdBy = userId
+            createdBy = userId,
+            inviterRole = inviterRole
         )
 
         return HttpResponse.created(invitation.toResponse())
@@ -43,7 +56,10 @@ class InvitationController(
 
     @Get
     @Secured("ROLE_BOSS", "ROLE_APP_OWNER")
-    fun getInvitations(@QueryValue organizationId: UUID, principal: Principal): HttpResponse<List<InvitationResponse>> {
+    fun getInvitations(
+        @QueryValue organizationId: UUID,
+        principal: Principal
+    ): HttpResponse<List<InvitationResponse>> {
         logger.info("GET /api/invitations - org: {}", organizationId)
 
         val userId = UUID.fromString(principal.name)
@@ -70,14 +86,13 @@ class InvitationController(
         }
     }
 
-    private fun ge.tiger8bit.domain.Invitation.toResponse(): InvitationResponse {
-        return InvitationResponse(
-            id = this.id!!,
-            email = this.email,
-            organizationId = this.organizationId,
-            role = this.role,
-            status = this.status,
-            expiresAt = formatter.format(this.expiresAt)
+    private fun Invitation.toResponse(): InvitationResponse =
+        InvitationResponse(
+            id = requireNotNull(id),
+            email = email,
+            organizationId = organizationId,
+            role = role,
+            status = status,
+            expiresAt = formatter.format(expiresAt)
         )
-    }
 }

@@ -46,7 +46,10 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlinVersion}")
     implementation("com.nimbusds:nimbus-jose-jwt:9.37.3")
     implementation("io.micronaut.tracing:micronaut-tracing-opentelemetry")
-    implementation ("io.projectreactor:reactor-core:${reactorVersion}")
+    implementation("io.projectreactor:reactor-core:${reactorVersion}")
+    implementation("io.micronaut.security:micronaut-security-oauth2")
+    implementation("io.micronaut.email:micronaut-email-javamail")
+    runtimeOnly("org.eclipse.angus:angus-mail")
     runtimeOnly("net.logstash.logback:logstash-logback-encoder:${logstashEncoderVersion}")
     compileOnly("io.micronaut:micronaut-http-client")
     runtimeOnly("ch.qos.logback:logback-classic")
@@ -57,6 +60,10 @@ dependencies {
     testImplementation("io.micronaut:micronaut-http-client")
     testImplementation("org.testcontainers:postgresql")
     testImplementation("org.testcontainers:testcontainers")
+    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation("io.kotest:kotest-runner-junit5:5.9.1")
+    testImplementation("io.kotest:kotest-assertions-core:5.9.1")
+    testImplementation("io.kotest:kotest-framework-engine:5.9.1")
     aotPlugins(platform("io.micronaut.platform:micronaut-platform:4.10.1"))
     aotPlugins("io.micronaut.security:micronaut-security-aot")
 }
@@ -132,4 +139,3 @@ tasks.register<Copy>("copyOpenApi") {
 tasks.named("build") {
     finalizedBy("copyOpenApi")
 }
-

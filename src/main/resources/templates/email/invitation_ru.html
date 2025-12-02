@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #333;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      background-color: #f0f0f0;
+      padding: 20px;
+      border-radius: 5px;
+    }
+
+    .content {
+      padding: 20px 0;
+    }
+
+    .cta-button {
+      display: inline-block;
+      background-color: #007bff;
+      color: white;
+      padding: 12px 30px;
+      text-decoration: none;
+      border-radius: 5px;
+      margin: 20px 0;
+    }
+
+    .footer {
+      color: #666;
+      font-size: 12px;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h2>Добро пожаловать в {{appName}}</h2>
+  </div>
+  <div class="content">
+    <p>Привет,</p>
+    <p><strong>{{inviterName}}</strong> пригласил вас присоединиться к <strong>{{appName}}</strong>.</p>
+    <p>Нажмите кнопку ниже, чтобы принять приглашение:</p>
+    <p>
+      <a class="cta-button" href="{{invitationUrl}}">Принять приглашение</a>
+    </p>
+    <p style="font-size: 12px; color: #666;">
+      Или скопируйте и вставьте эту ссылку в браузер:<br/>
+      <code style="background-color: #f5f5f5; padding: 2px 5px;">{{invitationUrl}}</code>
+    </p>
+  </div>
+  <div class="footer">
+    <p>&copy; 2025 {{appName}}. Все права защищены.</p>
+  </div>
+</div>
+</body>
+</html>
+

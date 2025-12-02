@@ -9,6 +9,21 @@ micronaut:
           secret:
             generator:
               secret: ${JWT_SECRET:changeThisInProduction}
+    oauth2:
+      clients:
+        google:
+          client-id: ${GOOGLE_CLIENT_ID:}
+          client-secret: ${GOOGLE_CLIENT_SECRET:}
+          openid:
+            enabled: true
+          scopes:
+            - openid
+            - email
+            - profile
+          endpoints:
+            authorization: https://accounts.google.com/o/oauth2/v2/auth
+            token: https://oauth2.googleapis.com/token
+            jwks: https://www.googleapis.com/oauth2/v3/certs
   openapi:
     enabled: true
 
@@ -35,8 +50,18 @@ flyway:
     default:
       enabled: true
 
+mail:
+  smtp:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    auth: ${SMTP_AUTH:false}
+    from: ${MAIL_FROM:noreply@nfcwalker.com}
+
 app:
+  name: ${APP_NAME:NFC Walker}
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  email:
+    default-language: ${APP_EMAIL_DEFAULT_LANGUAGE:en}
   challenge:
     secret: ${APP_CHALLENGE_SECRET:changeThisInProduction}
     ttl-seconds: 60
-
