@@ -1,3 +1,5 @@
+import io.micronaut.gradle.testresources.StartTestResourcesService
+
 plugins {
     id("org.jetbrains.kotlin.jvm") version "1.9.25"
     id("org.jetbrains.kotlin.plugin.allopen") version "1.9.25"
@@ -64,6 +66,7 @@ dependencies {
     testImplementation("io.kotest:kotest-runner-junit5:5.9.1")
     testImplementation("io.kotest:kotest-assertions-core:5.9.1")
     testImplementation("io.kotest:kotest-framework-engine:5.9.1")
+    testImplementation("com.buralotech.oss.testcontainers:mock-oauth2:1.0.0")
     aotPlugins(platform("io.micronaut.platform:micronaut-platform:4.10.1"))
     aotPlugins("io.micronaut.security:micronaut-security-aot")
 }
@@ -115,6 +118,9 @@ micronaut {
     }
 }
 
+tasks.withType<StartTestResourcesService>().configureEach {
+    useClassDataSharing.set(false)
+}
 
 tasks.named<io.micronaut.gradle.docker.NativeImageDockerfile>("dockerfileNative") {
     jdkVersion = "21"

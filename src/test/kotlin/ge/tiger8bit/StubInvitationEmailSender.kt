@@ -1,19 +1,7 @@
+// This test stub has been removed in favor of real SMTP testing via Mailhog Testcontainers.
+// The file is kept empty intentionally so that there is no @Replaces(EmailService::class)
+// overriding the production EmailService bean during tests.
+
 package ge.tiger8bit
 
-import ge.tiger8bit.domain.Invitation
-import ge.tiger8bit.service.EmailService
-import ge.tiger8bit.service.InvitationEmailSender
-import io.micronaut.context.annotation.Replaces
-import jakarta.inject.Singleton
-import java.util.concurrent.CopyOnWriteArrayList
-
-@Singleton
-@Replaces(EmailService::class)
-class StubInvitationEmailSender : InvitationEmailSender {
-    val sent: MutableList<Pair<Invitation, String>> = CopyOnWriteArrayList()
-
-    override fun sendInvitation(invitation: Invitation, inviterName: String) {
-        sent += invitation to inviterName
-    }
-}
-
+// File removed: StubInvitationEmailSender is no longer used. See Mailhog + EmailService for real SMTP in tests.

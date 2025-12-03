@@ -16,6 +16,21 @@ micronaut:
               secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
               generator:
                 secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+  email:
+    from:
+      email: ${MAIL_FROM:noreply@nfcwalker.com}
+      name: ${APP_NAME:NFC Walker}
+
+# Disable JavaMail authentication for tests (Mailhog doesn't require auth)
+javamail:
+  authentication:
+    enabled: false
+  properties:
+    mail.transport.protocol: smtp
+    mail.smtp.host: ${SMTP_HOST:localhost}
+    mail.smtp.port: ${SMTP_PORT:1025}
+    mail.smtp.auth: false
+    mail.smtp.starttls.enable: false
 
 # Test-only toggles
 test:

@@ -26,6 +26,21 @@ micronaut:
             jwks: https://www.googleapis.com/oauth2/v3/certs
   openapi:
     enabled: true
+  email:
+    from:
+      email: ${MAIL_FROM:noreply@nfcwalker.com}
+      name: ${APP_NAME:NFC Walker}
+
+javamail:
+  properties:
+    mail.transport.protocol: smtp
+    mail.smtp.host: ${SMTP_HOST:localhost}
+    mail.smtp.port: ${SMTP_PORT:1025}
+    mail.smtp.auth: ${SMTP_AUTH:false}
+    mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+  authentication:
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
 
 datasources:
   default:

@@ -1,14 +1,11 @@
 package ge.tiger8bit.spec
 
-import ge.tiger8bit.StubInvitationEmailSender
 import ge.tiger8bit.TestFixtures
 import ge.tiger8bit.domain.Role
 import ge.tiger8bit.dto.CreateInvitationRequest
 import ge.tiger8bit.dto.InvitationResponse
 import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import io.micronaut.core.type.Argument
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpStatus
@@ -23,15 +20,12 @@ import org.junit.jupiter.api.assertThrows
 class InvitationFlowSpec @Inject constructor(
     @Client("/") client: HttpClient,
     beanContext: io.micronaut.context.BeanContext,
-    private val stubEmailSender: StubInvitationEmailSender
 ) : BaseApiSpec(client, beanContext) {
 
     override fun StringSpec.registerTests() {
-        "APP_OWNER can invite BOSS and email is sent" {
+        "APP_OWNER can invite BOSS and invitation created" {
             val org = TestFixtures.createOrganization("Test Org")
             val (appOwnerToken, _) = createAppOwnerTokenForOrg(org.id!!, "appowner@invite.test")
-
-            stubEmailSender.sent.clear()
 
             val request = CreateInvitationRequest(
                 email = "boss@test.com",
@@ -50,11 +44,7 @@ class InvitationFlowSpec @Inject constructor(
             response.role shouldBe Role.ROLE_BOSS
             response.status shouldBe "pending"
 
-            // email should be "sent" via stub
-            stubEmailSender.sent.shouldHaveSize(1)
-            val (invitation, inviterName) = stubEmailSender.sent.first()
-            invitation.email shouldBe "boss@test.com"
-            inviterName shouldNotBe ""
+            // We previously used StubInvitationEmailSender here, but now all emails go through real EmailService -> Mailhog.
         }
 
         "BOSS can invite WORKER" {

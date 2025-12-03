@@ -8,8 +8,25 @@ import io.micronaut.test.support.TestPropertyProvider
 
 object TestContainersProvider : TestPropertyProvider {
     override fun getProperties(): Map<String, String> {
-        // Return empty map - Micronaut Test Resources (configured in application-test.yml)
-        // will provide the datasource properties and start the Postgres container.
-        return emptyMap()
+        // Start containers lazily via TestContainersManager
+        TestContainersManager.mailhog
+        val oauth2 = TestContainersManager.oauth2
+
+        return mapOf(
+            // JDBC via Testcontainers JDBC URL for Postgres
+            "datasources.default.url" to "jdbc:tc:postgresql:15:///testdb",
+            "datasources.default.username" to "test",
+            "datasources.default.password" to "test",
+            "datasources.default.driver-class-name" to "org.testcontainers.jdbc.ContainerDatabaseDriver",
+            "datasources.default.db-type" to "postgres",
+
+            // Wire Micronaut mail to Mailhog
+            "mail.smtp.host" to "localhost",
+            "mail.smtp.port" to TestContainersManager.getSmtpPort().toString(),
+
+            // Wire Micronaut security JWT to issuer from mock OAuth2 (for resource-server style tests)
+            // NOTE: adjust property names and usage when you start consuming oauth2 for JWTs.
+            // For now we just ensure the container is up and can be wired later.
+        )
     }
 }
