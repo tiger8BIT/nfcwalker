@@ -54,7 +54,7 @@ object MailhogHelper {
 
     fun waitForMessage(
         recipient: String,
-        timeoutMs: Long = 10000,
+        timeoutMs: Long = 30_000,
         pollIntervalMs: Long = 100
     ): MailhogMessage {
         val deadline = System.currentTimeMillis() + timeoutMs

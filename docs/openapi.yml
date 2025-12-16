@@ -57,6 +57,22 @@ paths:
                 type: object
                 additionalProperties:
                   type: string
+  /api/admin/organizations:
+    post:
+      operationId: createOrganization
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationRequest"
+        required: true
+      responses:
+        "200":
+          description: createOrganization 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationResponse"
   /api/admin/routes:
     post:
       operationId: createRoute
@@ -246,7 +262,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/OrganizationResponse"
     post:
-      operationId: createOrganization
+      operationId: createOrganization_1
       requestBody:
         content:
           application/json:
@@ -255,7 +271,7 @@ paths:
         required: true
       responses:
         "200":
-          description: createOrganization 200 response
+          description: createOrganization_1 200 response
           content:
             application/json:
               schema:
@@ -477,6 +493,18 @@ paths:
       responses:
         "200":
           description: getMe 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+  /auth/oauth/google/callback:
+    get:
+      operationId: callback
+      responses:
+        "200":
+          description: callback 200 response
           content:
             application/json:
               schema:
