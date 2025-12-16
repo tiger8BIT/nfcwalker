@@ -36,6 +36,11 @@ class InvitationFlowSpec : BaseApiSpec() {
             response.email shouldBe "boss@test.com"
             response.role shouldBe Role.ROLE_BOSS
             response.status shouldBe "pending"
+
+            // Verify invitation email was sent
+            val email = MailhogHelper.waitForMessage("boss@test.com")
+            MailhogHelper.assertMessageSentTo(email, "boss@test.com")
+            MailhogHelper.assertSubjectContains(email, "You're invited to NFC Walker")
         }
 
         "BOSS can invite WORKER" {
@@ -58,6 +63,11 @@ class InvitationFlowSpec : BaseApiSpec() {
             response.email shouldBe "worker@test.com"
             response.role shouldBe Role.ROLE_WORKER
             response.status shouldBe "pending"
+
+            // Verify invitation email was sent
+            val email = MailhogHelper.waitForMessage("worker@test.com")
+            MailhogHelper.assertMessageSentTo(email, "worker@test.com")
+            MailhogHelper.assertSubjectContains(email, "You're invited to NFC Walker")
         }
 
         "BOSS cannot invite BOSS (role hierarchy violation)" {

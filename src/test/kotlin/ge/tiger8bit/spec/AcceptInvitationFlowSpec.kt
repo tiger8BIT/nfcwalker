@@ -40,6 +40,11 @@ class AcceptInvitationFlowSpec : BaseApiSpec() {
                 InvitationResponse::class.java
             )
 
+            // Verify invitation email was sent
+            val email = MailhogHelper.waitForMessage("worker-accept@test.com")
+            MailhogHelper.assertMessageSentTo(email, "worker-accept@test.com")
+            MailhogHelper.assertSubjectContains(email, "You're invited to NFC Walker")
+
             // Load actual invitation from DB to get the token
             val invitationEntity = invitationRepository.findById(invite.id).orElseThrow()
 
