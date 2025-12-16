@@ -1,51 +1,37 @@
 package ge.tiger8bit.spec
 
+import ge.tiger8bit.TestFixtures
 import java.util.*
 
-/**
- * Builder object для инкапсуляции создания тестовых данных
- */
 object TestDataBuilder {
-    // These are now simple pass-through helpers that expect callers to already be in a MicronautTest with DI.
+    private val fixturesHolder = ThreadLocal<TestFixtures>()
+    private val specHelpersHolder = ThreadLocal<SpecHelpers>()
 
-    lateinit var fixtures: ge.tiger8bit.TestFixtures
+    var fixtures: TestFixtures
+        get() = fixturesHolder.get()
+            ?: error("TestFixtures not initialized. Call initializeTestDataBuilder() in beforeTest")
+        set(value) = fixturesHolder.set(value)
 
-    // specHelpers is optional - will be set by concrete test classes
-    var specHelpers: SpecHelpers? = null
+    var specHelpers: SpecHelpers?
+        get() = specHelpersHolder.get()
+        set(value) = if (value != null) specHelpersHolder.set(value) else specHelpersHolder.remove()
 
-    private fun requireSpecHelpers(): SpecHelpers {
-        return specHelpers ?: throw IllegalStateException(
-            "SpecHelpers not initialized. " +
-                    "Make sure your test class has @Inject lateinit var specHelpers: SpecHelpers " +
-                    "and calls TestDataBuilder.specHelpers = specHelpers in init block"
-        )
+    private fun requireSpecHelpers() = specHelpers
+        ?: error("SpecHelpers not initialized. Inject specHelpers and set TestDataBuilder.specHelpers")
+
+    fun clear() {
+        fixturesHolder.remove()
+        specHelpersHolder.remove()
     }
 
-    /**
-     * Создаёт организацию и площадку за один вызов
-     */
     fun orgAndSite() = fixtures.seedOrgAndSite()
 
-    /**
-     * Создаёт токен для BOSS роли (менеджер организации)
-     */
-    fun bossToken(
-        orgId: UUID,
-        email: String = "boss@test-${System.currentTimeMillis()}.com"
-    ) = requireSpecHelpers().createBossToken(orgId, email = email)
+    fun bossToken(orgId: UUID, email: String = "boss@test-${System.currentTimeMillis()}.com") =
+        requireSpecHelpers().createBossToken(orgId, email = email)
 
-    /**
-     * Создаёт токен для WORKER роли (охранник/патрульный)
-     */
-    fun workerToken(
-        orgId: UUID,
-        email: String = "worker@test-${System.currentTimeMillis()}.com"
-    ) = requireSpecHelpers().createWorkerToken(orgId, email = email)
+    fun workerToken(orgId: UUID, email: String = "worker@test-${System.currentTimeMillis()}.com") =
+        requireSpecHelpers().createWorkerToken(orgId, email = email)
 
-    /**
-     * Создаёт токен для APP_OWNER роли (суперадмин)
-     */
-    fun appOwnerToken(
-        email: String = "owner@test-${System.currentTimeMillis()}.com"
-    ) = requireSpecHelpers().createAppOwnerToken(email = email)
+    fun appOwnerToken(email: String = "owner@test-${System.currentTimeMillis()}.com") =
+        requireSpecHelpers().createAppOwnerToken(email = email)
 }
