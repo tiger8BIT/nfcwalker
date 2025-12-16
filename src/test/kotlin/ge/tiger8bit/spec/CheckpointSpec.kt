@@ -1,6 +1,5 @@
 package ge.tiger8bit.spec
 
-import ge.tiger8bit.TestFixtures
 import ge.tiger8bit.dto.CheckpointResponse
 import ge.tiger8bit.dto.CreateCheckpointRequest
 import ge.tiger8bit.withAuth
@@ -9,23 +8,18 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpStatus
-import io.micronaut.http.client.HttpClient
-import io.micronaut.http.client.annotation.Client
 import io.micronaut.http.client.exceptions.HttpClientResponseException
 import io.micronaut.test.extensions.kotest5.annotation.MicronautTest
-import jakarta.inject.Inject
 import org.junit.jupiter.api.assertThrows
 import java.math.BigDecimal
 
 @MicronautTest(transactional = false)
-class CheckpointSpec @Inject constructor(
-    @Client("/") client: HttpClient,
-    beanContext: io.micronaut.context.BeanContext
-) : BaseApiSpec(client, beanContext) {
+class CheckpointSpec : BaseApiSpec() {
+
     override fun StringSpec.registerTests() {
         "BOSS can create checkpoint via admin API" {
-            val (org, site) = TestFixtures.seedOrgAndSite()
-            val (bossToken, _) = createBossToken(org.id!!, email = "boss@checkpoint.com")
+            val (org, site) = fixtures.seedOrgAndSite()
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = "boss@checkpoint.com")
 
             val request = CreateCheckpointRequest(
                 organizationId = org.id!!,
@@ -47,8 +41,8 @@ class CheckpointSpec @Inject constructor(
         }
 
         "BOSS can list checkpoints for a site" {
-            val (org, site) = TestFixtures.seedOrgAndSite()
-            val (bossToken, _) = createBossToken(org.id!!, email = "boss@checkpoint-list.com")
+            val (org, site) = fixtures.seedOrgAndSite()
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = "boss@checkpoint-list.com")
 
             val request = CreateCheckpointRequest(
                 organizationId = org.id!!,
@@ -72,8 +66,8 @@ class CheckpointSpec @Inject constructor(
         }
 
         "WORKER cannot create checkpoint (forbidden)" {
-            val (org, site) = TestFixtures.seedOrgAndSite()
-            val (workerToken, _) = createWorkerToken(org.id!!, email = "worker@checkpoint-forbidden.com")
+            val (org, site) = fixtures.seedOrgAndSite()
+            val (workerToken, _) = specHelpers.createWorkerToken(org.id!!, email = "worker@checkpoint-forbidden.com")
 
             val request = CreateCheckpointRequest(
                 organizationId = org.id!!,
@@ -93,7 +87,7 @@ class CheckpointSpec @Inject constructor(
         }
 
         "POST /api/admin/checkpoints without token returns 401" {
-            val (org, site) = TestFixtures.seedOrgAndSite()
+            val (org, site) = fixtures.seedOrgAndSite()
 
             val request = CreateCheckpointRequest(
                 organizationId = org.id!!,

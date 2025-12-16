@@ -14,7 +14,17 @@ class UserRoleId(
 
     @Column(name = "organization_id", nullable = false)
     var organizationId: UUID = UUID.randomUUID()
-) : Serializable
+) : Serializable {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is UserRoleId) return false
+        return userId == other.userId && organizationId == other.organizationId
+    }
+
+    override fun hashCode(): Int {
+        return 31 * userId.hashCode() + organizationId.hashCode()
+    }
+}
 
 @Entity
 @Table(name = "user_roles")

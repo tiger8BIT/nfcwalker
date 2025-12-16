@@ -1,28 +1,22 @@
 package ge.tiger8bit.spec
 
-import ge.tiger8bit.TestFixtures
 import ge.tiger8bit.dto.*
 import ge.tiger8bit.withAuth
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.micronaut.http.HttpRequest
-import io.micronaut.http.client.HttpClient
-import io.micronaut.http.client.annotation.Client
 import io.micronaut.test.extensions.kotest5.annotation.MicronautTest
-import jakarta.inject.Inject
 import java.math.BigDecimal
 import java.time.Instant
 
 @MicronautTest(transactional = false)
-class ScanFlowSpec @Inject constructor(
-    @Client("/") client: HttpClient,
-    beanContext: io.micronaut.context.BeanContext
-) : BaseApiSpec(client, beanContext) {
+class ScanFlowSpec : BaseApiSpec() {
+
     override fun StringSpec.registerTests() {
         "complete start/finish" {
-            val (org, site) = TestFixtures.seedOrgAndSite()
-            val (bossToken, _) = createBossToken(org.id!!, email = "boss@scan-test.com")
+            val (org, site) = fixtures.seedOrgAndSite()
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = "boss@scan-test.com")
 
             val cp = client.toBlocking().retrieve(
                 HttpRequest.POST(
@@ -36,10 +30,10 @@ class ScanFlowSpec @Inject constructor(
                         BigDecimal("100.00")
                     )
                 ).withAuth(bossToken),
-                ge.tiger8bit.dto.CheckpointResponse::class.java
+                CheckpointResponse::class.java
             )
 
-            val route = TestFixtures.createRoute(org.id!!, site.id!!)
+            val route = fixtures.createRoute(org.id!!, site.id!!)
             client.toBlocking().retrieve(
                 HttpRequest.POST(
                     "/api/admin/routes/${route.id}/points",
@@ -48,11 +42,11 @@ class ScanFlowSpec @Inject constructor(
                 Map::class.java
             )
 
-            val run = TestFixtures.createPatrolRun(route.id!!, org.id!!)
+            val run = fixtures.createPatrolRun(route.id!!, org.id!!)
 
-            val (workerToken, workerId) = createWorkerToken(org.id!!, email = "worker@scan-test.com")
+            val (workerToken, workerId) = specHelpers.createWorkerToken(org.id!!, email = "worker@scan-test.com")
             val deviceId = "device-scan-test"
-            TestFixtures.createDevice(workerId, org.id!!, deviceId = deviceId)
+            fixtures.createDevice(workerId, org.id!!, deviceId = deviceId)
 
             val start = client.toBlocking().retrieve(
                 HttpRequest.POST("/api/scan/start", StartScanRequest(org.id!!, deviceId, cp.code)).withAuth(workerToken),

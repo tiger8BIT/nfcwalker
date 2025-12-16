@@ -1,6 +1,7 @@
 package ge.tiger8bit.controller
 
 import ge.tiger8bit.domain.Invitation
+import ge.tiger8bit.domain.Role
 import ge.tiger8bit.dto.CreateInvitationRequest
 import ge.tiger8bit.dto.InvitationResponse
 import ge.tiger8bit.getLogger
@@ -40,8 +41,14 @@ class InvitationController(
         val userId = UUID.fromString(principal.name)
         accessService.ensureBossOrAppOwner(userId, request.organizationId)
 
-        val inviterRole = authService.getUserRole(userId, request.organizationId)
-            ?: return HttpResponse.status<InvitationResponse>(HttpStatus.FORBIDDEN)
+        val orgRole = authService.getUserRole(userId, request.organizationId)
+        val inviterRole = orgRole ?: Role.ROLE_APP_OWNER
+
+        // Дополнительная страховка: только APP_OWNER может приглашать BOSS, только BOSS - WORKER
+        if (inviterRole == Role.ROLE_WORKER) {
+            logger.warn("WORKER cannot create invitations: user={}, org={}", userId, request.organizationId)
+            return HttpResponse.status(HttpStatus.FORBIDDEN)
+        }
 
         val invitation = invitationService.createInvitation(
             email = request.email,

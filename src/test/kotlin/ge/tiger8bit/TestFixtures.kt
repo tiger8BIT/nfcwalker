@@ -2,31 +2,57 @@ package ge.tiger8bit
 
 import ge.tiger8bit.domain.*
 import ge.tiger8bit.repository.*
-import io.micronaut.context.BeanContext
+import jakarta.inject.Inject
+import jakarta.inject.Singleton
 import java.time.Instant
 import java.util.*
 
-object TestFixtures {
-    private lateinit var beanContext: BeanContext
+@Singleton
+class TestFixtures @Inject constructor(
+    private val organizationRepository: OrganizationRepository,
+    private val siteRepository: SiteRepository,
+    private val userRepository: UserRepository,
+    private val userRoleRepository: UserRoleRepository,
+    private val deviceRepository: DeviceRepository,
+    private val patrolRouteRepository: PatrolRouteRepository,
+    private val patrolRunRepository: PatrolRunRepository,
+    private val invitationRepository: InvitationRepository,
+    private val challengeUsedRepository: ChallengeUsedRepository,
+    private val patrolRouteCheckpointRepository: PatrolRouteCheckpointRepository,
+    private val checkpointRepository: CheckpointRepository,
+) {
 
-    fun init(context: BeanContext) {
-        beanContext = context
+    /**
+     * Очищает все таблицы БД.
+     * Вызывайте в beforeEach или beforeTest для изоляции тестов.
+     */
+    fun cleanAll() {
+        try {
+            // Порядок важен из-за FK constraints
+            patrolRunRepository.deleteAll()
+            patrolRouteRepository.deleteAll()
+
+            // Devices, UserRoles
+            deviceRepository.deleteAll()
+            userRoleRepository.deleteAll()
+
+            // Invitations, ChallengeUsed
+            invitationRepository.deleteAll()
+            challengeUsedRepository.deleteAll()
+
+            // RouteCheckpoints, Checkpoints
+            patrolRouteCheckpointRepository.deleteAll()
+            checkpointRepository.deleteAll()
+
+            // Users, Sites, Organizations (last due to FK)
+            userRepository.deleteAll()
+            siteRepository.deleteAll()
+            organizationRepository.deleteAll()
+        } catch (e: Exception) {
+            println("WARNING: cleanAll failed: ${e.message}")
+        }
     }
 
-    private val organizationRepository: OrganizationRepository
-        get() = beanContext.getBean(OrganizationRepository::class.java)
-    private val siteRepository: SiteRepository
-        get() = beanContext.getBean(SiteRepository::class.java)
-    private val userRepository: UserRepository
-        get() = beanContext.getBean(UserRepository::class.java)
-    private val userRoleRepository: UserRoleRepository
-        get() = beanContext.getBean(UserRoleRepository::class.java)
-    private val deviceRepository: DeviceRepository
-        get() = beanContext.getBean(DeviceRepository::class.java)
-    private val patrolRouteRepository: PatrolRouteRepository
-        get() = beanContext.getBean(PatrolRouteRepository::class.java)
-    private val patrolRunRepository: PatrolRunRepository
-        get() = beanContext.getBean(PatrolRunRepository::class.java)
 
     fun createOrganization(name: String = "Test Org ${UUID.randomUUID()}"): Organization {
         val org = organizationRepository.save(Organization(name = name))
@@ -34,12 +60,6 @@ object TestFixtures {
         return org
     }
 
-    fun cleanupChallengeUsed(challengeUsedRepository: ChallengeUsedRepository) {
-        try {
-            challengeUsedRepository.deleteAll()
-        } catch (_: Exception) {
-        }
-    }
 
     fun seedOrgAndSite(
         orgName: String = "Test Org ${UUID.randomUUID()}",

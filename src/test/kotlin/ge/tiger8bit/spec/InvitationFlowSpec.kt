@@ -1,6 +1,5 @@
 package ge.tiger8bit.spec
 
-import ge.tiger8bit.TestFixtures
 import ge.tiger8bit.domain.Role
 import ge.tiger8bit.dto.CreateInvitationRequest
 import ge.tiger8bit.dto.InvitationResponse
@@ -9,23 +8,17 @@ import io.kotest.matchers.shouldBe
 import io.micronaut.core.type.Argument
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpStatus
-import io.micronaut.http.client.HttpClient
-import io.micronaut.http.client.annotation.Client
 import io.micronaut.http.client.exceptions.HttpClientResponseException
 import io.micronaut.test.extensions.kotest5.annotation.MicronautTest
-import jakarta.inject.Inject
 import org.junit.jupiter.api.assertThrows
 
 @MicronautTest(transactional = false)
-class InvitationFlowSpec @Inject constructor(
-    @Client("/") client: HttpClient,
-    beanContext: io.micronaut.context.BeanContext,
-) : BaseApiSpec(client, beanContext) {
+class InvitationFlowSpec : BaseApiSpec() {
 
     override fun StringSpec.registerTests() {
         "APP_OWNER can invite BOSS and invitation created" {
-            val org = TestFixtures.createOrganization("Test Org")
-            val (appOwnerToken, _) = createAppOwnerTokenForOrg(org.id!!, "appowner@invite.test")
+            val org = fixtures.createOrganization("Test Org")
+            val (appOwnerToken, _) = specHelpers.createAppOwnerTokenForOrg(org.id!!, "appowner@invite.test")
 
             val request = CreateInvitationRequest(
                 email = "boss@test.com",
@@ -43,13 +36,11 @@ class InvitationFlowSpec @Inject constructor(
             response.email shouldBe "boss@test.com"
             response.role shouldBe Role.ROLE_BOSS
             response.status shouldBe "pending"
-
-            // We previously used StubInvitationEmailSender here, but now all emails go through real EmailService -> Mailhog.
         }
 
         "BOSS can invite WORKER" {
-            val org = TestFixtures.createOrganization("Test Org")
-            val (bossToken, _) = createBossToken(org.id!!, "boss@invite.test")
+            val org = fixtures.createOrganization("Test Org")
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, "boss@invite.test")
 
             val request = CreateInvitationRequest(
                 email = "worker@test.com",
@@ -70,8 +61,8 @@ class InvitationFlowSpec @Inject constructor(
         }
 
         "BOSS cannot invite BOSS (role hierarchy violation)" {
-            val org = TestFixtures.createOrganization("Test Org")
-            val (bossToken, _) = createBossToken(org.id!!, "boss1@invite.test")
+            val org = fixtures.createOrganization("Test Org")
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, "boss1@invite.test")
 
             val request = CreateInvitationRequest(
                 email = "boss2@test.com",
@@ -90,8 +81,8 @@ class InvitationFlowSpec @Inject constructor(
         }
 
         "WORKER cannot invite anyone" {
-            val org = TestFixtures.createOrganization("Test Org")
-            val (workerToken, _) = createWorkerToken(org.id!!, "worker@invite.test")
+            val org = fixtures.createOrganization("Test Org")
+            val (workerToken, _) = specHelpers.createWorkerToken(org.id!!, "worker@invite.test")
 
             val request = CreateInvitationRequest(
                 email = "newworker@test.com",
@@ -110,8 +101,8 @@ class InvitationFlowSpec @Inject constructor(
         }
 
         "LIST invitations by organization" {
-            val org = TestFixtures.createOrganization("Test Org")
-            val (bossToken, _) = createBossToken(org.id!!, "boss@list.test")
+            val org = fixtures.createOrganization("Test Org")
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, "boss@list.test")
 
             val invite1 = CreateInvitationRequest(
                 email = "worker1@test.com",
@@ -141,8 +132,8 @@ class InvitationFlowSpec @Inject constructor(
         }
 
         "CANCEL pending invitation" {
-            val org = TestFixtures.createOrganization("Test Org")
-            val (bossToken, _) = createBossToken(org.id!!, "boss@cancel.test")
+            val org = fixtures.createOrganization("Test Org")
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, "boss@cancel.test")
 
             val inviteRequest = CreateInvitationRequest(
                 email = "worker@test.com",

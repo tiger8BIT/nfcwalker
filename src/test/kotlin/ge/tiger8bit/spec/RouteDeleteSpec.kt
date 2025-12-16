@@ -1,6 +1,5 @@
 package ge.tiger8bit.spec
 
-import ge.tiger8bit.TestFixtures
 import ge.tiger8bit.domain.Checkpoint
 import ge.tiger8bit.domain.PatrolRoute
 import ge.tiger8bit.domain.PatrolRouteCheckpoint
@@ -11,24 +10,26 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpStatus
-import io.micronaut.http.client.HttpClient
-import io.micronaut.http.client.annotation.Client
 import io.micronaut.http.client.exceptions.HttpClientResponseException
 import io.micronaut.test.extensions.kotest5.annotation.MicronautTest
 import jakarta.inject.Inject
 
 @MicronautTest(transactional = false)
-class RouteDeleteSpec @Inject constructor(
-    @Client("/") client: HttpClient,
-    beanContext: io.micronaut.context.BeanContext,
-    private val checkpointRepository: CheckpointRepository,
-    private val patrolRouteRepository: PatrolRouteRepository,
-    private val patrolRouteCheckpointRepository: PatrolRouteCheckpointRepository
-) : BaseApiSpec(client, beanContext) {
+class RouteDeleteSpec : BaseApiSpec() {
+
+    @Inject
+    private lateinit var checkpointRepository: CheckpointRepository
+
+    @Inject
+    private lateinit var patrolRouteRepository: PatrolRouteRepository
+
+    @Inject
+    private lateinit var patrolRouteCheckpointRepository: PatrolRouteCheckpointRepository
+
     override fun StringSpec.registerTests() {
         "DELETE /api/admin/routes/{id} should delete route and its checkpoints" {
-            val (org, site) = TestFixtures.seedOrgAndSite()
-            val (bossToken, _) = createBossToken(org.id!!, email = "boss@route-delete.com")
+            val (org, site) = fixtures.seedOrgAndSite()
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = "boss@route-delete.com")
 
             val route = patrolRouteRepository.save(
                 PatrolRoute(
@@ -86,8 +87,8 @@ class RouteDeleteSpec @Inject constructor(
         }
 
         "DELETE /api/admin/checkpoints/{id} should delete checkpoint" {
-            val (org, site) = TestFixtures.seedOrgAndSite()
-            val (bossToken, _) = createBossToken(org.id!!, email = "boss@checkpoint-delete.com")
+            val (org, site) = fixtures.seedOrgAndSite()
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = "boss@checkpoint-delete.com")
 
             val checkpoint = checkpointRepository.save(
                 Checkpoint(
@@ -112,8 +113,8 @@ class RouteDeleteSpec @Inject constructor(
         }
 
         "WORKER cannot delete route (forbidden)" {
-            val (org, site) = TestFixtures.seedOrgAndSite()
-            val (workerToken, _) = createWorkerToken(org.id!!, email = "worker@route-delete-forbidden.com")
+            val (org, site) = fixtures.seedOrgAndSite()
+            val (workerToken, _) = specHelpers.createWorkerToken(org.id!!, email = "worker@route-delete-forbidden.com")
 
             val route = patrolRouteRepository.save(
                 PatrolRoute(

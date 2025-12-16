@@ -1,11 +1,13 @@
 package ge.tiger8bit.controller
 
 import ge.tiger8bit.domain.Checkpoint
+import ge.tiger8bit.domain.Organization
 import ge.tiger8bit.domain.PatrolRoute
 import ge.tiger8bit.domain.PatrolRouteCheckpoint
 import ge.tiger8bit.dto.*
 import ge.tiger8bit.getLogger
 import ge.tiger8bit.repository.CheckpointRepository
+import ge.tiger8bit.repository.OrganizationRepository
 import ge.tiger8bit.repository.PatrolRouteCheckpointRepository
 import ge.tiger8bit.repository.PatrolRouteRepository
 import ge.tiger8bit.service.AccessService
@@ -21,7 +23,8 @@ open class AdminController(
     private val checkpointRepository: CheckpointRepository,
     private val patrolRouteRepository: PatrolRouteRepository,
     private val patrolRouteCheckpointRepository: PatrolRouteCheckpointRepository,
-    private val accessService: AccessService
+    private val accessService: AccessService,
+    private val organizationRepository: OrganizationRepository,
 ) {
     private val logger = getLogger()
 
@@ -152,6 +155,22 @@ open class AdminController(
         logger.info("Checkpoint deleted: {}", id)
 
         return mapOf("status" to "deleted", "id" to id.toString())
+    }
+
+    @Post("/organizations")
+    @Secured("ROLE_APP_OWNER")
+    @Transactional
+    open fun createOrganization(@Body request: CreateOrganizationRequest): OrganizationResponse {
+        val organization = organizationRepository.save(
+            Organization(
+                name = request.name
+            )
+        )
+        return OrganizationResponse(
+            id = organization.id!!,
+            name = organization.name,
+            createdAt = organization.createdAt
+        )
     }
 
     // ===== Private Helpers =====

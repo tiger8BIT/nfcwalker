@@ -21,14 +21,14 @@ micronaut:
       email: ${MAIL_FROM:noreply@nfcwalker.com}
       name: ${APP_NAME:NFC Walker}
 
-# Disable JavaMail authentication for tests (Mailhog doesn't require auth)
+# JavaMail configuration for tests (Mailhog doesn't require real auth)
 javamail:
   authentication:
     enabled: false
+    username: test
+    password: test
   properties:
     mail.transport.protocol: smtp
-    mail.smtp.host: ${SMTP_HOST:localhost}
-    mail.smtp.port: ${SMTP_PORT:1025}
     mail.smtp.auth: false
     mail.smtp.starttls.enable: false
 
@@ -38,18 +38,8 @@ test:
     rule:
       enabled: false
 
-datasources:
-  default:
-    url: "jdbc:tc:postgresql:15:///testdb"
-    username: test
-    password: test
-    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
-    db-type: postgres
-
 mail:
   smtp:
-    host: ${SMTP_HOST:localhost}
-    port: ${SMTP_PORT:1025}
     auth: ${SMTP_AUTH:false}
     from: ${MAIL_FROM:noreply@nfcwalker.com}
 
@@ -70,3 +60,5 @@ logging:
     io.micronaut.security: DEBUG
     io.micronaut.security.token: DEBUG
     io.micronaut.security.token.jwt: DEBUG
+    ge.tiger8bit.service.AccessService: INFO
+    ge.tiger8bit.service.JwtTokenService: INFO

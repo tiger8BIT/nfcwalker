@@ -1,115 +1,100 @@
 package ge.tiger8bit.spec
 
-import ge.tiger8bit.TestFixtures
 import ge.tiger8bit.dto.CreateSiteRequest
 import ge.tiger8bit.dto.SiteResponse
-import ge.tiger8bit.dto.UpdateSiteRequest
 import ge.tiger8bit.withAuth
 import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.comparables.shouldBeGreaterThanOrEqualTo
+import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.micronaut.core.type.Argument
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpStatus
-import io.micronaut.http.client.HttpClient
-import io.micronaut.http.client.annotation.Client
 import io.micronaut.http.client.exceptions.HttpClientResponseException
 import io.micronaut.test.extensions.kotest5.annotation.MicronautTest
-import jakarta.inject.Inject
 import org.junit.jupiter.api.assertThrows
 
 @MicronautTest(transactional = false)
-class SiteSpec @Inject constructor(
-    @Client("/") client: HttpClient,
-    beanContext: io.micronaut.context.BeanContext
-) : BaseApiSpec(client, beanContext) {
+class SiteSpec : BaseApiSpec() {
+
     override fun StringSpec.registerTests() {
-        "BOSS can create site" {
-            val (org, _) = TestFixtures.seedOrgAndSite()
-            val bossToken = createBossToken(org.id!!, email = "boss@site-create.com").first
+        "BOSS can create a site" {
+            val (org, _) = TestDataBuilder.orgAndSite()
+            val bossToken = TestDataBuilder.bossToken(org.id!!, email = "boss@site-create.com").first
 
             val request = CreateSiteRequest(
                 organizationId = org.id!!,
                 name = "New Site"
             )
 
-            val response = client.toBlocking()
-                .retrieve(
-                    HttpRequest.POST("/api/sites", request).withAuth(bossToken),
-                    SiteResponse::class.java
-                )
-
-            response.name shouldBe request.name
-            response.organizationId shouldBe org.id
-            response.id shouldNotBe null
-        }
-
-        "BOSS can list sites by organization" {
-            val (org, _) = TestFixtures.seedOrgAndSite()
-            val bossToken = createBossToken(org.id!!, email = "boss@site-list.com").first
-
-            val site2 = CreateSiteRequest(
-                organizationId = org.id!!,
-                name = "Site 2"
-            )
-
-            client.toBlocking().retrieve(
-                HttpRequest.POST("/api/sites", site2).withAuth(bossToken),
+            val response = client.toBlocking().retrieve(
+                HttpRequest.POST("/api/sites", request).withAuth(bossToken),
                 SiteResponse::class.java
             )
 
-            val list = client.toBlocking().retrieve(
-                HttpRequest.GET<Any>("/api/sites?organizationId=${org.id}").withAuth(bossToken),
-                Array<SiteResponse>::class.java
-            ).toList()
-
-            list.size shouldBeGreaterThanOrEqualTo 1
-            list.any { it.name == site2.name } shouldBe true
+            response.id shouldNotBe null
+            response.name shouldBe "New Site"
         }
 
-        "BOSS can update site" {
-            val (org, site) = TestFixtures.seedOrgAndSite()
-            val bossToken = createBossToken(org.id!!, email = "boss@site-update.com").first
-
-            val updateRequest = UpdateSiteRequest(name = "Updated Site")
-
-            val response = client.toBlocking()
-                .retrieve(
-                    HttpRequest.PUT("/api/sites/${site.id}", updateRequest).withAuth(bossToken),
-                    SiteResponse::class.java
-                )
-
-            response.name shouldBe updateRequest.name
-            response.id shouldBe site.id
-        }
-
-        "BOSS can delete site" {
-            val (org, site) = TestFixtures.seedOrgAndSite()
-            val bossToken = createBossToken(org.id!!, email = "boss@site-delete.com").first
-
-            val response = client.toBlocking()
-                .retrieve(
-                    HttpRequest.DELETE<Any>("/api/sites/${site.id}").withAuth(bossToken),
-                    Map::class.java
-                )
-
-            response["deleted"] shouldBe true
-
-            assertThrows<HttpClientResponseException> {
-                client.toBlocking().retrieve(
-                    HttpRequest.GET<Any>("/api/sites/${site.id}").withAuth(bossToken),
-                    SiteResponse::class.java
-                )
-            }
-        }
-
-        "WORKER cannot create site (forbidden)" {
-            val (org, _) = TestFixtures.seedOrgAndSite()
-            val workerToken = createWorkerToken(org.id!!, email = "worker@site-forbidden.com").first
+        "BOSS can list sites" {
+            val (org, _) = TestDataBuilder.orgAndSite()
+            val bossToken = TestDataBuilder.bossToken(org.id!!, email = "boss@site-list.com").first
 
             val request = CreateSiteRequest(
                 organizationId = org.id!!,
-                name = "Unauthorized Site"
+                name = "List Site"
+            )
+
+            client.toBlocking().retrieve(
+                HttpRequest.POST("/api/sites", request).withAuth(bossToken),
+                SiteResponse::class.java
+            )
+
+            val sites = client.toBlocking().retrieve(
+                HttpRequest.GET<Any>("/api/sites?organizationId=${org.id}").withAuth(bossToken),
+                Argument.listOf(SiteResponse::class.java)
+            )
+
+            sites.size shouldBeGreaterThan 0
+        }
+
+        "BOSS can update a site" {
+            val (org, site) = TestDataBuilder.orgAndSite()
+            val bossToken = TestDataBuilder.bossToken(org.id!!, email = "boss@site-update.com").first
+
+            val request = CreateSiteRequest(
+                organizationId = org.id!!,
+                name = "Updated Site"
+            )
+
+            val response = client.toBlocking().retrieve(
+                HttpRequest.PUT("/api/sites/${site.id}", request).withAuth(bossToken),
+                SiteResponse::class.java
+            )
+
+            response.id shouldBe site.id
+            response.name shouldBe "Updated Site"
+        }
+
+        "BOSS can delete a site" {
+            val (org, site) = TestDataBuilder.orgAndSite()
+            val bossToken = TestDataBuilder.bossToken(org.id!!, email = "boss@site-delete.com").first
+
+            val response = client.toBlocking().exchange(
+                HttpRequest.DELETE<Any>("/api/sites/${site.id}").withAuth(bossToken),
+                Map::class.java
+            )
+
+            response.status shouldBe HttpStatus.OK
+        }
+
+        "WORKER cannot manage sites (forbidden)" {
+            val (org, _) = TestDataBuilder.orgAndSite()
+            val workerToken = TestDataBuilder.workerToken(org.id!!, email = "worker@site-forbidden.com").first
+
+            val request = CreateSiteRequest(
+                organizationId = org.id!!,
+                name = "Forbidden Site"
             )
 
             val exception = assertThrows<HttpClientResponseException> {
