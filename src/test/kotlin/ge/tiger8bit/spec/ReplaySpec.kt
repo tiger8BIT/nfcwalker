@@ -1,7 +1,9 @@
 package ge.tiger8bit.spec
 
 import ge.tiger8bit.dto.*
-import ge.tiger8bit.withAuth
+import ge.tiger8bit.spec.common.BaseApiSpec
+import ge.tiger8bit.spec.common.TestData.Emails
+import ge.tiger8bit.spec.common.withAuth
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.micronaut.http.HttpRequest
@@ -18,11 +20,11 @@ class ReplaySpec : BaseApiSpec() {
         "replay attack returns 409" {
             val (org, site) = fixtures.seedOrgAndSite()
 
-            val (workerToken, workerId) = specHelpers.createWorkerToken(org.id!!, email = "worker@replay-test.com")
+            val (workerToken, workerId) = specHelpers.createWorkerToken(org.id!!, email = Emails.unique("worker"))
             val deviceId = "device-replay-test"
             fixtures.createDevice(workerId, org.id!!, deviceId = deviceId)
 
-            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = "boss@replay-test.com")
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
 
             val cp = client.toBlocking().retrieve(
                 HttpRequest.POST(

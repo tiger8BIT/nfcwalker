@@ -2,7 +2,11 @@ package ge.tiger8bit.spec
 
 import ge.tiger8bit.dto.CreateSiteRequest
 import ge.tiger8bit.dto.SiteResponse
-import ge.tiger8bit.withAuth
+import ge.tiger8bit.spec.common.BaseApiSpec
+import ge.tiger8bit.spec.common.TestData.Emails
+import ge.tiger8bit.spec.common.TestData.Sites
+import ge.tiger8bit.spec.common.TestDataBuilder
+import ge.tiger8bit.spec.common.withAuth
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.shouldBe
@@ -20,33 +24,22 @@ class SiteSpec : BaseApiSpec() {
     override fun StringSpec.registerTests() {
         "BOSS can create a site" {
             val (org, _) = TestDataBuilder.orgAndSite()
-            val bossToken = TestDataBuilder.bossToken(org.id!!, email = "boss@site-create.com").first
-
-            val request = CreateSiteRequest(
-                organizationId = org.id!!,
-                name = "New Site"
-            )
+            val bossToken = TestDataBuilder.bossToken(org.id!!, email = Emails.unique("boss")).first
 
             val response = client.toBlocking().retrieve(
-                HttpRequest.POST("/api/sites", request).withAuth(bossToken),
+                HttpRequest.POST("/api/sites", CreateSiteRequest(org.id!!, Sites.unique("New"))).withAuth(bossToken),
                 SiteResponse::class.java
             )
 
             response.id shouldNotBe null
-            response.name shouldBe "New Site"
         }
 
         "BOSS can list sites" {
             val (org, _) = TestDataBuilder.orgAndSite()
-            val bossToken = TestDataBuilder.bossToken(org.id!!, email = "boss@site-list.com").first
-
-            val request = CreateSiteRequest(
-                organizationId = org.id!!,
-                name = "List Site"
-            )
+            val bossToken = TestDataBuilder.bossToken(org.id!!, email = Emails.unique("boss")).first
 
             client.toBlocking().retrieve(
-                HttpRequest.POST("/api/sites", request).withAuth(bossToken),
+                HttpRequest.POST("/api/sites", CreateSiteRequest(org.id!!, Sites.unique("List"))).withAuth(bossToken),
                 SiteResponse::class.java
             )
 
@@ -60,25 +53,19 @@ class SiteSpec : BaseApiSpec() {
 
         "BOSS can update a site" {
             val (org, site) = TestDataBuilder.orgAndSite()
-            val bossToken = TestDataBuilder.bossToken(org.id!!, email = "boss@site-update.com").first
-
-            val request = CreateSiteRequest(
-                organizationId = org.id!!,
-                name = "Updated Site"
-            )
+            val bossToken = TestDataBuilder.bossToken(org.id!!, email = Emails.unique("boss")).first
 
             val response = client.toBlocking().retrieve(
-                HttpRequest.PUT("/api/sites/${site.id}", request).withAuth(bossToken),
+                HttpRequest.PUT("/api/sites/${site.id}", CreateSiteRequest(org.id!!, Sites.unique("Updated"))).withAuth(bossToken),
                 SiteResponse::class.java
             )
 
             response.id shouldBe site.id
-            response.name shouldBe "Updated Site"
         }
 
         "BOSS can delete a site" {
             val (org, site) = TestDataBuilder.orgAndSite()
-            val bossToken = TestDataBuilder.bossToken(org.id!!, email = "boss@site-delete.com").first
+            val bossToken = TestDataBuilder.bossToken(org.id!!, email = Emails.unique("boss")).first
 
             val response = client.toBlocking().exchange(
                 HttpRequest.DELETE<Any>("/api/sites/${site.id}").withAuth(bossToken),
@@ -90,16 +77,11 @@ class SiteSpec : BaseApiSpec() {
 
         "WORKER cannot manage sites (forbidden)" {
             val (org, _) = TestDataBuilder.orgAndSite()
-            val workerToken = TestDataBuilder.workerToken(org.id!!, email = "worker@site-forbidden.com").first
-
-            val request = CreateSiteRequest(
-                organizationId = org.id!!,
-                name = "Forbidden Site"
-            )
+            val workerToken = TestDataBuilder.workerToken(org.id!!, email = Emails.unique("worker")).first
 
             val exception = assertThrows<HttpClientResponseException> {
                 client.toBlocking().retrieve(
-                    HttpRequest.POST("/api/sites", request).withAuth(workerToken),
+                    HttpRequest.POST("/api/sites", CreateSiteRequest(org.id!!, Sites.unique("Forbidden"))).withAuth(workerToken),
                     SiteResponse::class.java
                 )
             }

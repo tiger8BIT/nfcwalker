@@ -1,6 +1,6 @@
-package ge.tiger8bit.spec
+package ge.tiger8bit.spec.common
 
-import ge.tiger8bit.TestFixtures
+import ge.tiger8bit.spec.SpecHelpers
 import java.util.*
 
 object TestDataBuilder {

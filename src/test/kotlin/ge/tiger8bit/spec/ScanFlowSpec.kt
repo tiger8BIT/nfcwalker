@@ -1,7 +1,9 @@
 package ge.tiger8bit.spec
 
 import ge.tiger8bit.dto.*
-import ge.tiger8bit.withAuth
+import ge.tiger8bit.spec.common.BaseApiSpec
+import ge.tiger8bit.spec.common.TestData.Emails
+import ge.tiger8bit.spec.common.withAuth
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -16,7 +18,7 @@ class ScanFlowSpec : BaseApiSpec() {
     override fun StringSpec.registerTests() {
         "complete start/finish" {
             val (org, site) = fixtures.seedOrgAndSite()
-            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = "boss@scan-test.com")
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
 
             val cp = client.toBlocking().retrieve(
                 HttpRequest.POST(
@@ -44,7 +46,7 @@ class ScanFlowSpec : BaseApiSpec() {
 
             val run = fixtures.createPatrolRun(route.id!!, org.id!!)
 
-            val (workerToken, workerId) = specHelpers.createWorkerToken(org.id!!, email = "worker@scan-test.com")
+            val (workerToken, workerId) = specHelpers.createWorkerToken(org.id!!, email = Emails.unique("worker"))
             val deviceId = "device-scan-test"
             fixtures.createDevice(workerId, org.id!!, deviceId = deviceId)
 

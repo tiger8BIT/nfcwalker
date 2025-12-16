@@ -1,7 +1,6 @@
-package ge.tiger8bit.spec
+package ge.tiger8bit.spec.common
 
-import ge.tiger8bit.TestContainersManager
-import ge.tiger8bit.TestFixtures
+import ge.tiger8bit.spec.SpecHelpers
 import io.kotest.core.spec.style.StringSpec
 import io.micronaut.core.type.Argument
 import io.micronaut.http.HttpRequest

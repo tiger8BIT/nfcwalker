@@ -1,4 +1,4 @@
-package ge.tiger8bit
+package ge.tiger8bit.spec.common
 
 import ge.tiger8bit.domain.*
 import ge.tiger8bit.repository.*
@@ -105,7 +105,7 @@ class TestFixtures @Inject constructor(
     fun createUserWithRole(
         organizationId: UUID,
         role: Role,
-        email: String = "user-${UUID.randomUUID()}@test.com",
+        email: String = TestData.Emails.unique("user"),
         name: String = "Test User"
     ): Pair<User, UserRole> {
         val user = userRepository.save(
@@ -130,7 +130,7 @@ class TestFixtures @Inject constructor(
     }
 
     fun createUser(
-        email: String = "user-${UUID.randomUUID()}@test.com",
+        email: String = TestData.Emails.unique("user"),
         name: String = "Test User",
         googleId: String? = "google-${UUID.randomUUID()}"
     ): User {

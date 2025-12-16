@@ -2,7 +2,9 @@ package ge.tiger8bit.spec
 
 import ge.tiger8bit.dto.CheckpointResponse
 import ge.tiger8bit.dto.CreateCheckpointRequest
-import ge.tiger8bit.withAuth
+import ge.tiger8bit.spec.common.BaseApiSpec
+import ge.tiger8bit.spec.common.TestData.Emails
+import ge.tiger8bit.spec.common.withAuth
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -19,7 +21,7 @@ class CheckpointSpec : BaseApiSpec() {
     override fun StringSpec.registerTests() {
         "BOSS can create checkpoint via admin API" {
             val (org, site) = fixtures.seedOrgAndSite()
-            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = "boss@checkpoint.com")
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
 
             val request = CreateCheckpointRequest(
                 organizationId = org.id!!,
@@ -42,7 +44,7 @@ class CheckpointSpec : BaseApiSpec() {
 
         "BOSS can list checkpoints for a site" {
             val (org, site) = fixtures.seedOrgAndSite()
-            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = "boss@checkpoint-list.com")
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
 
             val request = CreateCheckpointRequest(
                 organizationId = org.id!!,
@@ -67,7 +69,7 @@ class CheckpointSpec : BaseApiSpec() {
 
         "WORKER cannot create checkpoint (forbidden)" {
             val (org, site) = fixtures.seedOrgAndSite()
-            val (workerToken, _) = specHelpers.createWorkerToken(org.id!!, email = "worker@checkpoint-forbidden.com")
+            val (workerToken, _) = specHelpers.createWorkerToken(org.id!!, email = Emails.unique("worker"))
 
             val request = CreateCheckpointRequest(
                 organizationId = org.id!!,

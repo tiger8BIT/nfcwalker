@@ -6,6 +6,8 @@ import ge.tiger8bit.domain.PatrolRouteCheckpoint
 import ge.tiger8bit.repository.CheckpointRepository
 import ge.tiger8bit.repository.PatrolRouteCheckpointRepository
 import ge.tiger8bit.repository.PatrolRouteRepository
+import ge.tiger8bit.spec.common.BaseApiSpec
+import ge.tiger8bit.spec.common.TestData.Emails
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.micronaut.http.HttpRequest
@@ -29,7 +31,7 @@ class RouteDeleteSpec : BaseApiSpec() {
     override fun StringSpec.registerTests() {
         "DELETE /api/admin/routes/{id} should delete route and its checkpoints" {
             val (org, site) = fixtures.seedOrgAndSite()
-            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = "boss@route-delete.com")
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
 
             val route = patrolRouteRepository.save(
                 PatrolRoute(
@@ -88,7 +90,7 @@ class RouteDeleteSpec : BaseApiSpec() {
 
         "DELETE /api/admin/checkpoints/{id} should delete checkpoint" {
             val (org, site) = fixtures.seedOrgAndSite()
-            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = "boss@checkpoint-delete.com")
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
 
             val checkpoint = checkpointRepository.save(
                 Checkpoint(
@@ -114,7 +116,7 @@ class RouteDeleteSpec : BaseApiSpec() {
 
         "WORKER cannot delete route (forbidden)" {
             val (org, site) = fixtures.seedOrgAndSite()
-            val (workerToken, _) = specHelpers.createWorkerToken(org.id!!, email = "worker@route-delete-forbidden.com")
+            val (workerToken, _) = specHelpers.createWorkerToken(org.id!!, email = Emails.unique("worker"))
 
             val route = patrolRouteRepository.save(
                 PatrolRoute(

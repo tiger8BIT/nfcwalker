@@ -1,4 +1,4 @@
-package ge.tiger8bit
+package ge.tiger8bit.spec.common
 
 import io.kotest.core.listeners.TestListener
 import io.kotest.core.test.TestCase

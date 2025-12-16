@@ -1,7 +1,9 @@
 package ge.tiger8bit.spec
 
 import ge.tiger8bit.dto.*
-import ge.tiger8bit.withAuth
+import ge.tiger8bit.spec.common.BaseApiSpec
+import ge.tiger8bit.spec.common.TestData.Emails
+import ge.tiger8bit.spec.common.withAuth
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.micronaut.http.HttpRequest
@@ -16,17 +18,14 @@ class RouteSpec : BaseApiSpec() {
     override fun StringSpec.registerTests() {
         "BOSS can create route and add checkpoints" {
             val (org, site) = fixtures.seedOrgAndSite()
-            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = "boss@route.com")
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
 
-            val cp1Request = CreateCheckpointRequest(org.id!!, site.id!!, "CP-1")
             val cp1 = client.toBlocking().retrieve(
-                HttpRequest.POST("/api/admin/checkpoints", cp1Request).withAuth(bossToken),
+                HttpRequest.POST("/api/admin/checkpoints", CreateCheckpointRequest(org.id!!, site.id!!, "CP-1")).withAuth(bossToken),
                 CheckpointResponse::class.java
             )
-
-            val cp2Request = CreateCheckpointRequest(org.id!!, site.id!!, "CP-2")
             val cp2 = client.toBlocking().retrieve(
-                HttpRequest.POST("/api/admin/checkpoints", cp2Request).withAuth(bossToken),
+                HttpRequest.POST("/api/admin/checkpoints", CreateCheckpointRequest(org.id!!, site.id!!, "CP-2")).withAuth(bossToken),
                 CheckpointResponse::class.java
             )
 
@@ -50,17 +49,12 @@ class RouteSpec : BaseApiSpec() {
 
         "WORKER cannot create route (forbidden)" {
             val (org, site) = fixtures.seedOrgAndSite()
-            val (workerToken, _) = specHelpers.createWorkerToken(org.id!!, email = "worker@route-forbidden.com")
-
-            val request = CreateRouteRequest(
-                organizationId = org.id!!,
-                siteId = site.id!!,
-                name = "Unauthorized Route"
-            )
+            val (workerToken, _) = specHelpers.createWorkerToken(org.id!!, email = Emails.unique("worker"))
 
             val exception = assertThrows<HttpClientResponseException> {
                 client.toBlocking().retrieve(
-                    HttpRequest.POST("/api/admin/routes", request).withAuth(workerToken),
+                    HttpRequest.POST("/api/admin/routes", CreateRouteRequest(org.id!!, site.id!!, "Unauthorized Route"))
+                        .withAuth(workerToken),
                     RouteResponse::class.java
                 )
             }

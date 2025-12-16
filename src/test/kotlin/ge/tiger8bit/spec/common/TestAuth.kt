@@ -1,6 +1,7 @@
-package ge.tiger8bit
+package ge.tiger8bit.spec.common
 
 import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.MACSigner
 import com.nimbusds.jose.crypto.MACVerifier
 import com.nimbusds.jwt.JWTClaimsSet
@@ -41,7 +42,7 @@ object TestAuth {
             .claim("scope", roles.joinToString(" ") { it.removePrefix("ROLE_").lowercase() })
             .build()
 
-        val signedJWT = SignedJWT(com.nimbusds.jose.JWSHeader(JWSAlgorithm.HS256), claims)
+        val signedJWT = SignedJWT(JWSHeader(JWSAlgorithm.HS256), claims)
         val signer = MACSigner(signingKeyBytes)
         signedJWT.sign(signer)
         return signedJWT.serialize()

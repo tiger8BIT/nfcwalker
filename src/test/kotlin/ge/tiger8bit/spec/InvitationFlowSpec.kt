@@ -3,6 +3,10 @@ package ge.tiger8bit.spec
 import ge.tiger8bit.domain.Role
 import ge.tiger8bit.dto.CreateInvitationRequest
 import ge.tiger8bit.dto.InvitationResponse
+import ge.tiger8bit.spec.common.BaseApiSpec
+import ge.tiger8bit.spec.common.MailhogHelper
+import ge.tiger8bit.spec.common.TestData.Emails
+import ge.tiger8bit.spec.common.TestData.Orgs
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.micronaut.core.type.Argument
@@ -17,142 +21,112 @@ class InvitationFlowSpec : BaseApiSpec() {
 
     override fun StringSpec.registerTests() {
         "APP_OWNER can invite BOSS and invitation created" {
-            val org = fixtures.createOrganization("Test Org")
-            val (appOwnerToken, _) = specHelpers.createAppOwnerTokenForOrg(org.id!!, "appowner@invite.test")
+            val org = fixtures.createOrganization(Orgs.DEFAULT)
+            val inviteEmail = Emails.boss("invite")
+            val (appOwnerToken, _) = specHelpers.createAppOwnerTokenForOrg(org.id!!, Emails.unique("appowner"))
 
             val request = CreateInvitationRequest(
-                email = "boss@test.com",
+                email = inviteEmail,
                 organizationId = org.id!!,
                 role = Role.ROLE_BOSS
             )
 
-            val response = postJson(
-                "/api/invitations",
-                request,
-                appOwnerToken,
-                InvitationResponse::class.java
-            )
+            val response = postJson("/api/invitations", request, appOwnerToken, InvitationResponse::class.java)
 
-            response.email shouldBe "boss@test.com"
+            response.email shouldBe inviteEmail
             response.role shouldBe Role.ROLE_BOSS
             response.status shouldBe "pending"
 
-            // Verify invitation email was sent
-            val email = MailhogHelper.waitForMessage("boss@test.com")
-            MailhogHelper.assertMessageSentTo(email, "boss@test.com")
-            MailhogHelper.assertSubjectContains(email, "You're invited to NFC Walker")
+            val email = MailhogHelper.waitForMessage(inviteEmail)
+            MailhogHelper.assertMessageSentTo(email, inviteEmail)
         }
 
         "BOSS can invite WORKER" {
-            val org = fixtures.createOrganization("Test Org")
-            val (bossToken, _) = specHelpers.createBossToken(org.id!!, "boss@invite.test")
+            val org = fixtures.createOrganization(Orgs.DEFAULT)
+            val inviteEmail = Emails.worker("invite")
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, Emails.unique("boss"))
 
             val request = CreateInvitationRequest(
-                email = "worker@test.com",
+                email = inviteEmail,
                 organizationId = org.id!!,
                 role = Role.ROLE_WORKER
             )
 
-            val response = postJson(
-                "/api/invitations",
-                request,
-                bossToken,
-                InvitationResponse::class.java
-            )
+            val response = postJson("/api/invitations", request, bossToken, InvitationResponse::class.java)
 
-            response.email shouldBe "worker@test.com"
+            response.email shouldBe inviteEmail
             response.role shouldBe Role.ROLE_WORKER
             response.status shouldBe "pending"
 
-            // Verify invitation email was sent
-            val email = MailhogHelper.waitForMessage("worker@test.com")
-            MailhogHelper.assertMessageSentTo(email, "worker@test.com")
-            MailhogHelper.assertSubjectContains(email, "You're invited to NFC Walker")
+            val email = MailhogHelper.waitForMessage(inviteEmail)
+            MailhogHelper.assertMessageSentTo(email, inviteEmail)
         }
 
         "BOSS cannot invite BOSS (role hierarchy violation)" {
-            val org = fixtures.createOrganization("Test Org")
-            val (bossToken, _) = specHelpers.createBossToken(org.id!!, "boss1@invite.test")
+            val org = fixtures.createOrganization(Orgs.DEFAULT)
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, Emails.unique("boss1"))
 
             val request = CreateInvitationRequest(
-                email = "boss2@test.com",
+                email = Emails.boss("other"),
                 organizationId = org.id!!,
                 role = Role.ROLE_BOSS
             )
 
             assertThrows<HttpClientResponseException> {
-                postJson(
-                    "/api/invitations",
-                    request,
-                    bossToken,
-                    InvitationResponse::class.java
-                )
+                postJson("/api/invitations", request, bossToken, InvitationResponse::class.java)
             }.status shouldBe HttpStatus.FORBIDDEN
         }
 
         "WORKER cannot invite anyone" {
-            val org = fixtures.createOrganization("Test Org")
-            val (workerToken, _) = specHelpers.createWorkerToken(org.id!!, "worker@invite.test")
+            val org = fixtures.createOrganization(Orgs.DEFAULT)
+            val (workerToken, _) = specHelpers.createWorkerToken(org.id!!, Emails.unique("worker"))
 
             val request = CreateInvitationRequest(
-                email = "newworker@test.com",
+                email = Emails.worker("new"),
                 organizationId = org.id!!,
                 role = Role.ROLE_WORKER
             )
 
             assertThrows<HttpClientResponseException> {
-                postJson(
-                    "/api/invitations",
-                    request,
-                    workerToken,
-                    InvitationResponse::class.java
-                )
+                postJson("/api/invitations", request, workerToken, InvitationResponse::class.java)
             }.status shouldBe HttpStatus.FORBIDDEN
         }
 
         "LIST invitations by organization" {
-            val org = fixtures.createOrganization("Test Org")
-            val (bossToken, _) = specHelpers.createBossToken(org.id!!, "boss@list.test")
+            val org = fixtures.createOrganization(Orgs.DEFAULT)
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, Emails.unique("boss"))
+            val worker1Email = Emails.worker("list1")
+            val worker2Email = Emails.worker("list2")
 
-            val invite1 = CreateInvitationRequest(
-                email = "worker1@test.com",
-                organizationId = org.id!!,
-                role = Role.ROLE_WORKER
+            postJson(
+                "/api/invitations",
+                CreateInvitationRequest(worker1Email, org.id!!, Role.ROLE_WORKER),
+                bossToken,
+                InvitationResponse::class.java
             )
-            val invite2 = CreateInvitationRequest(
-                email = "worker2@test.com",
-                organizationId = org.id!!,
-                role = Role.ROLE_WORKER
+            postJson(
+                "/api/invitations",
+                CreateInvitationRequest(worker2Email, org.id!!, Role.ROLE_WORKER),
+                bossToken,
+                InvitationResponse::class.java
             )
 
-            postJson("/api/invitations", invite1, bossToken, InvitationResponse::class.java)
-            postJson("/api/invitations", invite2, bossToken, InvitationResponse::class.java)
-
-            val url = "/api/invitations?organizationId=${org.id}"
-            val request = HttpRequest.GET<List<InvitationResponse>>(url)
+            val request = HttpRequest.GET<List<InvitationResponse>>("/api/invitations?organizationId=${org.id}")
                 .bearerAuth(bossToken)
-            val responses = client.toBlocking().retrieve(
-                request,
-                Argument.listOf(InvitationResponse::class.java)
-            )
+            val responses = client.toBlocking().retrieve(request, Argument.listOf(InvitationResponse::class.java))
 
             responses.size shouldBe 2
-            responses[0].email shouldBe "worker1@test.com"
-            responses[1].email shouldBe "worker2@test.com"
+            responses.map { it.email } shouldBe listOf(worker1Email, worker2Email)
         }
 
         "CANCEL pending invitation" {
-            val org = fixtures.createOrganization("Test Org")
-            val (bossToken, _) = specHelpers.createBossToken(org.id!!, "boss@cancel.test")
+            val org = fixtures.createOrganization(Orgs.DEFAULT)
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, Emails.unique("boss"))
+            val inviteEmail = Emails.worker("cancel")
 
-            val inviteRequest = CreateInvitationRequest(
-                email = "worker@test.com",
-                organizationId = org.id!!,
-                role = Role.ROLE_WORKER
-            )
             val inviteResponse = postJson(
                 "/api/invitations",
-                inviteRequest,
+                CreateInvitationRequest(inviteEmail, org.id!!, Role.ROLE_WORKER),
                 bossToken,
                 InvitationResponse::class.java
             )

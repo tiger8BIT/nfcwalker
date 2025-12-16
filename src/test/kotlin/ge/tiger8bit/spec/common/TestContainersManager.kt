@@ -1,6 +1,7 @@
-package ge.tiger8bit
+package ge.tiger8bit.spec.common
 
 import com.buralotech.oss.testcontainers.mockoauth2.MockOAuth2Container
+import ge.tiger8bit.getLogger
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.MediaType

@@ -1,6 +1,5 @@
-package ge.tiger8bit.spec
+package ge.tiger8bit.spec.common
 
-import ge.tiger8bit.TestContainersManager
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.client.HttpClient
 import io.micronaut.http.client.netty.DefaultHttpClient

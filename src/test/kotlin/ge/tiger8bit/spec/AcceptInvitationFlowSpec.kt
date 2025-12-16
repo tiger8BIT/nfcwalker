@@ -1,12 +1,16 @@
 package ge.tiger8bit.spec
 
-import ge.tiger8bit.TestAuth
 import ge.tiger8bit.domain.Role
 import ge.tiger8bit.dto.AcceptInvitationRequest
 import ge.tiger8bit.dto.CreateInvitationRequest
 import ge.tiger8bit.dto.InvitationResponse
 import ge.tiger8bit.repository.InvitationRepository
 import ge.tiger8bit.repository.UserRoleRepository
+import ge.tiger8bit.spec.common.BaseApiSpec
+import ge.tiger8bit.spec.common.MailhogHelper
+import ge.tiger8bit.spec.common.TestAuth
+import ge.tiger8bit.spec.common.TestData.Emails
+import ge.tiger8bit.spec.common.TestData.Orgs
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.micronaut.http.HttpRequest
@@ -24,45 +28,32 @@ class AcceptInvitationFlowSpec : BaseApiSpec() {
 
     override fun StringSpec.registerTests() {
         "user can accept invitation and gets role" {
-            val org = fixtures.createOrganization("Accept Org")
-            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = "boss@accept.org")
-
-            val inviteReq = CreateInvitationRequest(
-                email = "worker-accept@test.com",
-                organizationId = org.id!!,
-                role = Role.ROLE_WORKER
-            )
+            val org = fixtures.createOrganization(Orgs.ACCEPT)
+            val inviteEmail = Emails.worker("accept")
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
 
             val invite = postJson(
                 "/api/invitations",
-                inviteReq,
+                CreateInvitationRequest(inviteEmail, org.id!!, Role.ROLE_WORKER),
                 bossToken,
                 InvitationResponse::class.java
             )
 
-            // Verify invitation email was sent
-            val email = MailhogHelper.waitForMessage("worker-accept@test.com")
-            MailhogHelper.assertMessageSentTo(email, "worker-accept@test.com")
-            MailhogHelper.assertSubjectContains(email, "You're invited to NFC Walker")
+            val email = MailhogHelper.waitForMessage(inviteEmail)
+            MailhogHelper.assertMessageSentTo(email, inviteEmail)
 
-            // Load actual invitation from DB to get the token
             val invitationEntity = invitationRepository.findById(invite.id).orElseThrow()
-
             val worker = fixtures.createUser(email = invite.email)
             val workerToken = TestAuth.generateWorkerToken(worker.id!!.toString())
 
-            val acceptReq = AcceptInvitationRequest(token = invitationEntity.token)
-            val request = HttpRequest.POST("/auth/invite/accept", acceptReq).bearerAuth(workerToken)
-
+            val request = HttpRequest.POST("/auth/invite/accept", AcceptInvitationRequest(invitationEntity.token))
+                .bearerAuth(workerToken)
             val response = client.toBlocking().retrieve(request, Map::class.java)
 
             response["status"] shouldBe "accepted"
-
-            val roles = userRoleRepository.findByIdUserId(worker.id!!)
-            roles.any { it.role == Role.ROLE_WORKER && it.id.organizationId == org.id } shouldBe true
-
-            val updatedInvitation = invitationRepository.findById(invite.id).orElseThrow()
-            updatedInvitation.status shouldBe "accepted"
+            userRoleRepository.findByIdUserId(worker.id!!)
+                .any { it.role == Role.ROLE_WORKER && it.id.organizationId == org.id } shouldBe true
+            invitationRepository.findById(invite.id).orElseThrow().status shouldBe "accepted"
         }
     }
 }

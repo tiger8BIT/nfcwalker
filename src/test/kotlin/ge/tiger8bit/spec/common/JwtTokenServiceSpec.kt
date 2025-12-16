@@ -1,4 +1,4 @@
-package ge.tiger8bit.spec
+package ge.tiger8bit.spec.common
 
 import com.nimbusds.jwt.SignedJWT
 import ge.tiger8bit.domain.Role
