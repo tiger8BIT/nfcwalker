@@ -72,8 +72,10 @@ abstract class BaseApiSpec : StringSpec(), TestPropertyProvider {
 
     override fun getProperties(): Map<String, String> {
         val postgres = TestContainersManager.postgres
-        TestContainersManager.mailhog
+        val mailhog = TestContainersManager.mailhog
         val oauth2 = TestContainersManager.oauth2
+
+        val smtpPort = mailhog.getMappedPort(1025)
 
         createSchema()
 
@@ -85,8 +87,8 @@ abstract class BaseApiSpec : StringSpec(), TestPropertyProvider {
             "datasources.default.db-type" to "postgres",
             "flyway.datasources.default.default-schema" to schemaName,
             "flyway.datasources.default.schemas" to schemaName,
-            "mail.smtp.host" to "localhost",
-            "mail.smtp.port" to TestContainersManager.getSmtpPort().toString(),
+            "javamail.properties.mail.smtp.host" to mailhog.host,
+            "javamail.properties.mail.smtp.port" to smtpPort.toString(),
         )
 
         addOAuth2PropsIfAvailable(oauth2, props)
