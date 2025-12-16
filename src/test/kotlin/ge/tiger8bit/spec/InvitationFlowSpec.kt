@@ -22,7 +22,7 @@ class InvitationFlowSpec : BaseApiSpec() {
     override fun StringSpec.registerTests() {
         "APP_OWNER can invite BOSS and invitation created" {
             val org = fixtures.createOrganization(Orgs.DEFAULT)
-            val inviteEmail = Emails.boss("invite")
+            val inviteEmail = Emails.unique("boss-invite")
             val (appOwnerToken, _) = specHelpers.createAppOwnerTokenForOrg(org.id!!, Emails.unique("appowner"))
 
             val request = CreateInvitationRequest(
@@ -43,7 +43,7 @@ class InvitationFlowSpec : BaseApiSpec() {
 
         "BOSS can invite WORKER" {
             val org = fixtures.createOrganization(Orgs.DEFAULT)
-            val inviteEmail = Emails.worker("invite")
+            val inviteEmail = Emails.unique("worker-invite")
             val (bossToken, _) = specHelpers.createBossToken(org.id!!, Emails.unique("boss"))
 
             val request = CreateInvitationRequest(
@@ -95,8 +95,8 @@ class InvitationFlowSpec : BaseApiSpec() {
         "LIST invitations by organization" {
             val org = fixtures.createOrganization(Orgs.DEFAULT)
             val (bossToken, _) = specHelpers.createBossToken(org.id!!, Emails.unique("boss"))
-            val worker1Email = Emails.worker("list1")
-            val worker2Email = Emails.worker("list2")
+            val worker1Email = Emails.unique("worker-list1")
+            val worker2Email = Emails.unique("worker-list2")
 
             postJson(
                 "/api/invitations",

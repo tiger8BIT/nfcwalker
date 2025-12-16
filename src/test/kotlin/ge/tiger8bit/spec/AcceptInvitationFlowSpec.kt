@@ -29,7 +29,7 @@ class AcceptInvitationFlowSpec : BaseApiSpec() {
     override fun StringSpec.registerTests() {
         "user can accept invitation and gets role" {
             val org = fixtures.createOrganization(Orgs.ACCEPT)
-            val inviteEmail = Emails.worker("accept")
+            val inviteEmail = Emails.unique("worker-accept")
             val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
 
             val invite = postJson(

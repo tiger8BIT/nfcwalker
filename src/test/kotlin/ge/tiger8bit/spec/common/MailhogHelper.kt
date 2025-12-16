@@ -35,31 +35,18 @@ object MailhogHelper {
         }
     }
 
-    fun getMessagesForRecipient(email: String): List<MailhogMessage> =
-        getMessages().filter { it.to.any { to -> to.contains(email, ignoreCase = true) } }
-
-    fun getLatestMessage(): MailhogMessage? = getMessages().firstOrNull()
-
-    fun getLatestMessageForRecipient(email: String): MailhogMessage? =
-        getMessagesForRecipient(email).firstOrNull()
-
-    fun clearMessages() {
-        createClient().use { client ->
-            client.toBlocking().exchange(
-                HttpRequest.DELETE<Any>("/api/v1/messages"),
-                String::class.java
-            )
-        }
-    }
-
     fun waitForMessage(
         recipient: String,
-        timeoutMs: Long = 30_000,
+        timeoutMs: Long = 5_000,
         pollIntervalMs: Long = 100
     ): MailhogMessage {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {
-            getLatestMessageForRecipient(recipient)?.let { return it }
+            val message = getMessages()
+                .firstOrNull { it.to.any { to -> to.contains(recipient, ignoreCase = true) } }
+            if (message != null) {
+                return message
+            }
             Thread.sleep(pollIntervalMs)
         }
         error("No message received for $recipient within ${timeoutMs}ms")

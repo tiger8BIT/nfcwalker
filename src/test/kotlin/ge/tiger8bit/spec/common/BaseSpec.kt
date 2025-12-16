@@ -31,7 +31,6 @@ abstract class BaseApiSpec : StringSpec(), TestPropertyProvider {
             runCatching {
                 initializeTestDataBuilder()
                 TestDataBuilder.fixtures.cleanAll()
-                MailhogHelper.clearMessages()
             }.onFailure { println("WARNING: Could not clean database: ${it.message}") }
         }
 
