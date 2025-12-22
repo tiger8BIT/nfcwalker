@@ -1,0 +1,29 @@
+# AWS Lambda Dockerfile
+# For deploying Micronaut as Lambda function with API Gateway proxy
+
+FROM eclipse-temurin:21-jdk AS builder
+
+WORKDIR /app
+
+COPY gradlew .
+COPY gradle gradle
+COPY build.gradle.kts .
+COPY settings.gradle.kts .
+COPY gradle.properties .
+
+RUN chmod +x ./gradlew && ./gradlew dependencies --no-daemon --console=plain
+
+COPY src src
+
+# Build function jar for AWS Lambda
+RUN ./gradlew shadowJar -Plambda --no-daemon --console=plain -x test
+
+# AWS Lambda base image
+FROM public.ecr.aws/lambda/java:21
+
+# Copy the built jar
+COPY --from=builder /app/build/libs/*-all.jar ${LAMBDA_TASK_ROOT}/lib/
+
+# Set the handler
+CMD ["io.micronaut.function.aws.proxy.payload1.ApiGatewayProxyRequestEventFunction"]
+

@@ -1,0 +1,43 @@
+# Google Cloud Run Dockerfile
+# Uses the same shadow jar but optimized for Cloud Run
+
+FROM eclipse-temurin:21-jdk AS builder
+
+WORKDIR /app
+
+COPY gradlew .
+COPY gradle gradle
+COPY build.gradle.kts .
+COPY settings.gradle.kts .
+COPY gradle.properties .
+
+RUN chmod +x ./gradlew && ./gradlew dependencies --no-daemon --console=plain
+
+COPY src src
+
+# Build optimized jar for Cloud Run
+RUN ./gradlew shadowJar --no-daemon --console=plain -x test
+
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+COPY --from=builder --chown=appuser:appgroup /app/build/libs/*-all.jar app.jar
+
+# Cloud Run uses PORT env variable
+ENV PORT=8080
+EXPOSE ${PORT}
+
+# Cloud Run optimized JVM settings
+ENV JAVA_OPTS="-XX:+UseContainerSupport \
+    -XX:MaxRAMPercentage=75.0 \
+    -XX:+TieredCompilation \
+    -XX:TieredStopAtLevel=1 \
+    -Xss256k \
+    -Dmicronaut.environments=gcp"
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dmicronaut.server.port=${PORT} -jar app.jar"]
+

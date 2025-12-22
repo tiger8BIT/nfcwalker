@@ -1,0 +1,44 @@
+services:
+  # Local development - runs pre-built jar with volume mount
+  # Build first: ./gradlew shadowJar -Plocal
+  app:
+    image: eclipse-temurin:21-jre-alpine
+    working_dir: /app
+    volumes:
+      - ./build/libs:/app/libs:ro
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.docker
+    command: [ "java", "-jar", "/app/libs/nfcwalker-0.1-all.jar" ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - nfcwalker-network
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: nfcwalker
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d nfcwalker" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nfcwalker-network
+
+volumes:
+  postgres-data:
+
+networks:
+  nfcwalker-network:
+    driver: bridge
+

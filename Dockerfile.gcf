@@ -1,0 +1,37 @@
+# GCP Cloud Functions Dockerfile (Gen 2)
+# For deploying as Google Cloud Function
+
+FROM eclipse-temurin:21-jdk AS builder
+
+WORKDIR /app
+
+COPY gradlew .
+COPY gradle gradle
+COPY build.gradle.kts .
+COPY settings.gradle.kts .
+COPY gradle.properties .
+
+RUN chmod +x ./gradlew && ./gradlew dependencies --no-daemon --console=plain
+
+COPY src src
+
+# Build function jar
+RUN ./gradlew shadowJar -Pgcf --no-daemon --console=plain -x test
+
+# GCP Functions Framework base image
+FROM gcr.io/buildpacks/google-22/run:latest
+
+USER root
+
+# Install Java 21
+RUN apt-get update && apt-get install -y openjdk-21-jre-headless && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=builder /app/build/libs/*-all.jar function.jar
+
+ENV JAVA_TOOL_OPTIONS="-XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+
+# GCP Cloud Functions entry point
+ENTRYPOINT ["java", "-jar", "function.jar"]
+

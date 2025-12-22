@@ -1,0 +1,40 @@
+# Build stage
+FROM eclipse-temurin:21-jdk AS builder
+
+WORKDIR /app
+
+# Copy gradle wrapper and build files first (better layer caching)
+COPY gradlew .
+COPY gradle gradle
+COPY build.gradle.kts .
+COPY settings.gradle.kts .
+COPY gradle.properties .
+
+# Make gradlew executable and download dependencies (cached if build files unchanged)
+RUN chmod +x ./gradlew && ./gradlew dependencies --no-daemon --console=plain
+
+# Copy source code
+COPY src src
+
+# Build the application (exclude cloud dependencies for local run)
+RUN ./gradlew shadowJar -Plocal --no-daemon --console=plain -x test
+
+# Runtime stage
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+
+# Add non-root user for security
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+# Copy the built jar
+COPY --from=builder --chown=appuser:appgroup /app/build/libs/*-all.jar app.jar
+
+EXPOSE 8080
+
+# JVM options for containers
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+

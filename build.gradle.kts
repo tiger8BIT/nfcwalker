@@ -81,6 +81,43 @@ configurations {
     }
 }
 
+// Build profiles: -Plocal, -Plambda, -Pgcf
+val isLocalBuild = project.hasProperty("local") || System.getenv("MICRONAUT_ENV") == "local"
+val isLambdaBuild = project.hasProperty("lambda")
+val isGcfBuild = project.hasProperty("gcf")
+
+if (isLocalBuild) {
+    // Local: exclude all cloud dependencies, use Netty only
+    configurations {
+        named("runtimeClasspath") {
+            exclude(group = "io.micronaut.aws", module = "micronaut-function-aws-api-proxy")
+            exclude(group = "io.micronaut.gcp", module = "micronaut-gcp-function-http")
+            exclude(group = "com.google.cloud.functions", module = "functions-framework-api")
+        }
+    }
+}
+
+if (isLambdaBuild) {
+    // AWS Lambda: exclude GCP, exclude Netty server
+    configurations {
+        named("runtimeClasspath") {
+            exclude(group = "io.micronaut.gcp", module = "micronaut-gcp-function-http")
+            exclude(group = "com.google.cloud.functions", module = "functions-framework-api")
+            exclude(group = "io.micronaut", module = "micronaut-http-server-netty")
+        }
+    }
+}
+
+if (isGcfBuild) {
+    // GCP Cloud Functions: exclude AWS, exclude Netty server
+    configurations {
+        named("runtimeClasspath") {
+            exclude(group = "io.micronaut.aws", module = "micronaut-function-aws-api-proxy")
+            exclude(group = "io.micronaut", module = "micronaut-http-server-netty")
+        }
+    }
+}
+
 
 application {
     mainClass = "ge.tiger8bit.ApplicationKt"

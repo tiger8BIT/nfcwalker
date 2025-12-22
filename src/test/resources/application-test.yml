@@ -11,22 +11,30 @@ micronaut:
         roles-claim: roles
         signatures:
           secret:
+            generator:
+              # 32-byte secret for HS256
+              secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
             default:
-              # Named secret entry (default) with explicit value for verification
               secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
               generator:
                 secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    oauth2:
+      clients:
+        google:
+          # Placeholder values - will be overridden by TestPropertyProvider in BaseSpec
+          client-id: test-client-id
+          client-secret: test-client-secret
   email:
     from:
-      email: ${MAIL_FROM:noreply@nfcwalker.com}
-      name: ${APP_NAME:NFC Walker}
+      email: noreply@nfcwalker.com
+      name: NFC Walker
 
-# JavaMail configuration for tests (Mailhog doesn't require real auth)
+# JavaMail - host/port overridden by BaseSpec, rest here
 javamail:
   authentication:
     enabled: false
-    username: test
-    password: test
+    username: ""
+    password: ""
   properties:
     mail.transport.protocol: smtp
     mail.smtp.auth: false
@@ -40,21 +48,21 @@ test:
 
 mail:
   smtp:
-    auth: ${SMTP_AUTH:false}
-    from: ${MAIL_FROM:noreply@nfcwalker.com}
+    host: localhost
+    port: 1025
+    auth: false
+    from: noreply@nfcwalker.com
 
 app:
-  name: ${APP_NAME:NFC Walker}
-  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  name: NFC Walker
+  frontend-url: http://localhost:3000
   email:
-    default-language: ${APP_EMAIL_DEFAULT_LANGUAGE:en}
+    default-language: en
   template-base: templates
-  # Use a 32-byte (256-bit) secret for challenge signing in tests to satisfy HS256
   challenge:
     secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
     ttl-seconds: 60
 
-# Enable debug logging for security to diagnose token validation issues during tests
 logging:
   level:
     io.micronaut.security: DEBUG

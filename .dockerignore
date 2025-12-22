@@ -1,0 +1,42 @@
+# Build artifacts
+build/
+.gradle/
+target/
+out/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.settings
+.classpath
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Env files
+.env*
+
+# Docs
+docs/
+README.md
+
+# Logs
+*.log
+hs_err_pid*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test resources (not needed for production build)
+src/test/
+
