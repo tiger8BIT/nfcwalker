@@ -1,5 +1,6 @@
 package ge.tiger8bit.service
 
+import ge.tiger8bit.constants.ChallengeConstants
 import ge.tiger8bit.domain.Checkpoint
 import ge.tiger8bit.domain.PatrolRouteCheckpoint
 import ge.tiger8bit.domain.PatrolRun
@@ -55,7 +56,7 @@ open class ScanService(
             }
 
         val challenge = challengeService.issue(
-            orgId = request.organizationId,
+            organizationId = request.organizationId,
             deviceId = request.deviceId,
             checkpointId = checkpoint.id!!
         )
@@ -135,9 +136,9 @@ open class ScanService(
             val signedJWT = com.nimbusds.jwt.SignedJWT.parse(jws)
             val claims = signedJWT.jwtClaimsSet
             Triple(
-                UUID.fromString(claims.getClaim("org") as String),
-                claims.getClaim("dev") as String,
-                UUID.fromString(claims.getClaim("cp") as String)
+                UUID.fromString(claims.getClaim(ChallengeConstants.Claims.ORGANIZATION) as String),
+                claims.getClaim(ChallengeConstants.Claims.DEVICE) as String,
+                UUID.fromString(claims.getClaim(ChallengeConstants.Claims.CHECKPOINT) as String)
             )
         } catch (e: Exception) {
             logger.warn("Invalid challenge format: {}", e.message)

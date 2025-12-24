@@ -6,6 +6,7 @@ import com.nimbusds.jose.crypto.MACSigner
 import com.nimbusds.jose.crypto.MACVerifier
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
+import ge.tiger8bit.constants.ChallengeConstants
 import ge.tiger8bit.domain.ChallengeUsed
 import ge.tiger8bit.getLogger
 import io.micronaut.context.annotation.Property
@@ -18,15 +19,15 @@ import java.util.*
 
 @Singleton
 open class ChallengeService(
-    private val em: EntityManager,
-    @Property(name = "app.challenge.secret", defaultValue = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+    private val entityManager: EntityManager,
+    @Property(name = "app.challenge.secret")
     private val secret: String,
-    @Property(name = "app.challenge.ttl-seconds", defaultValue = "60")
+    @Property(name = "app.challenge.ttl-seconds")
     private val ttlSeconds: Long
 ) {
     private val logger = getLogger()
 
-    fun issue(orgId: UUID, deviceId: String, checkpointId: UUID, ttl: Long = ttlSeconds): String {
+    fun issue(organizationId: UUID, deviceId: String, checkpointId: UUID, ttl: Long = ttlSeconds): String {
         val now = Instant.now()
         val exp = now.plusSeconds(ttl)
         val jti = UUID.randomUUID().toString()
@@ -35,9 +36,9 @@ open class ChallengeService(
             .jwtID(jti)
             .issueTime(Date.from(now))
             .expirationTime(Date.from(exp))
-            .claim("org", orgId.toString())
-            .claim("dev", deviceId)
-            .claim("cp", checkpointId.toString())
+            .claim(ChallengeConstants.Claims.ORGANIZATION, organizationId.toString())
+            .claim(ChallengeConstants.Claims.DEVICE, deviceId)
+            .claim(ChallengeConstants.Claims.CHECKPOINT, checkpointId.toString())
             .build()
 
         val signedJWT = SignedJWT(
@@ -48,7 +49,7 @@ open class ChallengeService(
         val signer = MACSigner(secret.toByteArray())
         signedJWT.sign(signer)
 
-        logger.debug("Challenge issued: jti={}, org={}, cp={}, ttl={}", jti, orgId, checkpointId, ttl)
+        logger.debug("Challenge issued: jti={}, org={}, cp={}, ttl={}", jti, organizationId, checkpointId, ttl)
 
         return signedJWT.serialize()
     }
@@ -56,9 +57,9 @@ open class ChallengeService(
     @Transactional(value = TxType.REQUIRES_NEW)
     open fun validateAndConsume(
         jws: String,
-        expectedOrg: UUID,
-        expectedDev: String,
-        expectedCp: UUID
+        expectedOrganizationId: UUID,
+        expectedDeviceId: String,
+        expectedCheckpointId: UUID
     ): ValidationResult {
         try {
             val signedJWT = SignedJWT.parse(jws)
@@ -77,32 +78,32 @@ open class ChallengeService(
                 return ValidationResult.Invalid("Challenge expired")
             }
 
-            val org = try {
-                UUID.fromString(claims.getClaim("org") as String)
+            val organizationId = try {
+                UUID.fromString(claims.getClaim("organization") as String)
             } catch (_: Exception) {
-                logger.warn("Invalid org claim in challenge")
-                return ValidationResult.Invalid("Invalid org claim")
+                logger.warn("Invalid organization claim in challenge")
+                return ValidationResult.Invalid("Invalid organization claim")
             }
 
-            val dev = claims.getClaim("dev") as? String ?: return ValidationResult.Invalid("Missing dev claim")
+            val deviceId = claims.getClaim("device") as? String ?: return ValidationResult.Invalid("Missing device claim")
 
-            val cp = try {
-                UUID.fromString(claims.getClaim("cp") as String)
+            val checkpointId = try {
+                UUID.fromString(claims.getClaim("checkpoint") as String)
             } catch (_: Exception) {
-                logger.warn("Invalid cp claim in challenge")
-                return ValidationResult.Invalid("Invalid cp claim")
+                logger.warn("Invalid checkpoint claim in challenge")
+                return ValidationResult.Invalid("Invalid checkpoint claim")
             }
 
-            if (org != expectedOrg) {
-                logger.warn("Challenge org mismatch: expected={}, got={}", expectedOrg, org)
+            if (organizationId != expectedOrganizationId) {
+                logger.warn("Challenge organization mismatch: expected={}, got={}", expectedOrganizationId, organizationId)
                 return ValidationResult.Invalid("Organization mismatch")
             }
-            if (dev != expectedDev) {
-                logger.warn("Challenge device mismatch: expected={}, got={}", expectedDev, dev)
+            if (deviceId != expectedDeviceId) {
+                logger.warn("Challenge device mismatch: expected={}, got={}", expectedDeviceId, deviceId)
                 return ValidationResult.Invalid("Device mismatch")
             }
-            if (cp != expectedCp) {
-                logger.warn("Challenge checkpoint mismatch: expected={}, got={}", expectedCp, cp)
+            if (checkpointId != expectedCheckpointId) {
+                logger.warn("Challenge checkpoint mismatch: expected={}, got={}", expectedCheckpointId, checkpointId)
                 return ValidationResult.Invalid("Checkpoint mismatch")
             }
 
@@ -110,7 +111,7 @@ open class ChallengeService(
             val issuedAt = claims.issueTime.toInstant()
             val expiresAt = claims.expirationTime.toInstant()
 
-            val existing = em.find(ChallengeUsed::class.java, jti)
+            val existing = entityManager.find(ChallengeUsed::class.java, jti)
             if (existing != null) {
                 logger.warn("Challenge replay detected (precheck): jti={}", jti)
                 return ValidationResult.Replay("Challenge already used")
@@ -121,16 +122,16 @@ open class ChallengeService(
                 this.issuedAt = issuedAt
                 this.expiresAt = expiresAt
                 this.usedAt = Instant.now()
-                this.deviceId = expectedDev
-                this.checkpointId = expectedCp
+                this.deviceId = expectedDeviceId
+                this.checkpointId = expectedCheckpointId
             }
 
             return try {
-                em.persist(challengeUsed)
-                em.flush()
-                logger.info("Challenge consumed: jti={}, org={}, cp={}", jti, expectedOrg, expectedCp)
+                entityManager.persist(challengeUsed)
+                entityManager.flush()
+                logger.info("Challenge consumed: jti={}, org={}, cp={}", jti, expectedOrganizationId, expectedCheckpointId)
                 ValidationResult.Valid(jti)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 logger.warn("Challenge replay detected on persist: jti={}", jti)
                 ValidationResult.Replay("Challenge already used")
             }

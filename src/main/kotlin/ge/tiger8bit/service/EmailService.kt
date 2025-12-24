@@ -15,13 +15,13 @@ interface InvitationEmailSender {
 @Singleton
 open class EmailService(
     private val emailSender: EmailSender<Any, Any>,
-    @Value("\${mail.smtp.from:noreply@nfcwalker.com}")
+    @Value("\${mail.smtp.from}")
     private val fromEmail: String,
-    @Value("\${app.name:NFC Walker}")
+    @Value("\${app.name}")
     private val appName: String,
-    @Value("\${app.frontend-url:http://localhost:3000}")
+    @Value("\${app.frontend-url}")
     private val frontendUrl: String,
-    @Value("\${app.email.default-language:en}")
+    @Value("\${app.email.default-language}")
     private val defaultLanguage: String
 ) : InvitationEmailSender {
 
