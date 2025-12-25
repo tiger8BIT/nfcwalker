@@ -9,7 +9,7 @@ import com.nimbusds.jwt.SignedJWT
 import ge.tiger8bit.constants.ChallengeConstants
 import ge.tiger8bit.domain.ChallengeUsed
 import ge.tiger8bit.getLogger
-import io.micronaut.context.annotation.Property
+import ge.tiger8bit.configproperties.AppChallengeProperties
 import jakarta.inject.Singleton
 import jakarta.persistence.EntityManager
 import jakarta.transaction.Transactional
@@ -20,12 +20,11 @@ import java.util.*
 @Singleton
 open class ChallengeService(
     private val entityManager: EntityManager,
-    @Property(name = "app.challenge.secret")
-    private val secret: String,
-    @Property(name = "app.challenge.ttl-seconds")
-    private val ttlSeconds: Long
+    private val challengeProps: AppChallengeProperties
 ) {
     private val logger = getLogger()
+    private val secret get() = challengeProps.secret
+    private val ttlSeconds get() = challengeProps.ttlSeconds
 
     fun issue(organizationId: UUID, deviceId: String, checkpointId: UUID, ttl: Long = ttlSeconds): String {
         val now = Instant.now()

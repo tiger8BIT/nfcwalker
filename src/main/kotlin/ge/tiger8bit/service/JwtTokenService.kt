@@ -6,18 +6,17 @@ import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
 import ge.tiger8bit.getLogger
 import ge.tiger8bit.repository.UserRoleRepository
-import io.micronaut.context.annotation.Value
+import ge.tiger8bit.configproperties.JwtSecretGeneratorProperties
 import jakarta.inject.Singleton
 import java.util.*
 
 @Singleton
 class JwtTokenService(
     private val userRoleRepository: UserRoleRepository,
-    @Value("\${micronaut.security.token.jwt.signatures.secret.generator.secret}")
-    private val rawSecret: String
+    private val jwtSecretGeneratorProperties: JwtSecretGeneratorProperties
 ) {
     private val logger = getLogger()
-    private val signingKeyBytes: ByteArray by lazy { rawSecret.toByteArray() }
+    private val signingKeyBytes: ByteArray by lazy { jwtSecretGeneratorProperties.secret.toByteArray() }
 
     fun generateForUser(userId: UUID): String {
         val now = Date()

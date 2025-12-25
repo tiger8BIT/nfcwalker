@@ -2,7 +2,9 @@ package ge.tiger8bit.service
 
 import ge.tiger8bit.domain.Invitation
 import ge.tiger8bit.getLogger
-import io.micronaut.context.annotation.Value
+import ge.tiger8bit.configproperties.AppCoreProperties
+import ge.tiger8bit.configproperties.AppEmailProperties
+import ge.tiger8bit.configproperties.MailSmtpProperties
 import io.micronaut.email.Email
 import io.micronaut.email.EmailSender
 import jakarta.inject.Singleton
@@ -15,26 +17,21 @@ interface InvitationEmailSender {
 @Singleton
 open class EmailService(
     private val emailSender: EmailSender<Any, Any>,
-    @Value("\${mail.smtp.from}")
-    private val fromEmail: String,
-    @Value("\${app.name}")
-    private val appName: String,
-    @Value("\${app.frontend-url}")
-    private val frontendUrl: String,
-    @Value("\${app.email.default-language}")
-    private val defaultLanguage: String
+    private val mailSmtpProperties: MailSmtpProperties,
+    private val appCoreProperties: AppCoreProperties,
+    private val appEmailProperties: AppEmailProperties
 ) : InvitationEmailSender {
 
     private val logger = getLogger()
 
     override fun sendInvitation(invitation: Invitation, inviterName: String) {
-        val invitationUrl = "$frontendUrl/auth/invite?token=${invitation.token}"
+        val invitationUrl = "${appCoreProperties.frontendUrl}/auth/invite?token=${invitation.token}"
         val language = resolveLanguage()
         val subject = getSubject(language)
-        val htmlBody = loadAndRenderTemplate(language, appName, inviterName, invitationUrl)
+        val htmlBody = loadAndRenderTemplate(language, appCoreProperties.name, inviterName, invitationUrl)
 
         val emailBuilder = Email.builder()
-            .from(fromEmail)
+            .from(mailSmtpProperties.from)
             .to(invitation.email)
             .subject(subject)
             .body(htmlBody)
@@ -47,11 +44,11 @@ open class EmailService(
         }
     }
 
-    private fun resolveLanguage(): String = defaultLanguage
+    private fun resolveLanguage(): String = appEmailProperties.defaultLanguage
 
     private fun getSubject(language: String): String = when (language) {
-        "ru" -> "Вы приглашены в $appName"
-        else -> "You're invited to $appName"
+        "ru" -> "Вы приглашены в ${appCoreProperties.name}"
+        else -> "You're invited to ${appCoreProperties.name}"
     }
 
     private fun loadAndRenderTemplate(language: String, appName: String, inviterName: String, invitationUrl: String): String {
