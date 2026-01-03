@@ -95,6 +95,10 @@ open class AuthService(
         return true
     }
 
+    fun getUserRoles(userId: UUID): List<UserRole> {
+        return userRoleRepository.findByIdUserId(userId)
+    }
+
     fun getUserRoles(userId: UUID, organizationId: UUID): List<Role> {
         return userRoleRepository.findByIdUserId(userId)
             .filter { it.id.organizationId == organizationId }

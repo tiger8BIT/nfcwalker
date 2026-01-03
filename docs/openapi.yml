@@ -496,9 +496,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties:
-                  type: string
+                $ref: "#/components/schemas/AuthMeResponse"
   /auth/oauth/google/callback:
     get:
       operationId: callback
@@ -519,6 +517,35 @@ components:
       type: object
       properties:
         token:
+          type: string
+    AuthMeResponse:
+      required:
+        - roles
+        - user
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserResponse"
+        roles:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/Role"
+    UserResponse:
+      required:
+        - createdAt
+        - email
+        - id
+        - name
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        name:
+          type: string
+        createdAt:
           type: string
     AddRouteCheckpointRequest:
       required:
