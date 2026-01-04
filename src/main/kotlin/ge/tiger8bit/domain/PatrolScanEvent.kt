@@ -4,7 +4,7 @@ import io.micronaut.serde.annotation.Serdeable
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.Instant
-import java.util.UUID
+import java.util.*
 
 @Entity
 @Table(
@@ -29,7 +29,7 @@ class PatrolScanEvent(
     var checkpointId: UUID = UUID(0, 0),
 
     @Column(name = "user_id", nullable = false)
-    var userId: String = "",
+    var userId: UUID = UUID(0, 0),
 
     @Column(name = "scanned_at", nullable = false)
     var scannedAt: Instant = Instant.now(),
@@ -43,17 +43,25 @@ class PatrolScanEvent(
     @Column(nullable = false, length = 50)
     var verdict: String = "ok",
 
+    @Column(name = "check_status", length = 50)
+    var checkStatus: String? = null,
+
+    @Column(name = "check_notes", columnDefinition = "text")
+    var checkNotes: String? = null,
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now()
 ) {
     constructor(
         patrolRunId: UUID,
         checkpointId: UUID,
-        userId: String,
+        userId: UUID,
         scannedAt: Instant,
         lat: BigDecimal? = null,
         lon: BigDecimal? = null,
-        verdict: String = "ok"
-    ) : this(null, patrolRunId, checkpointId, userId, scannedAt, lat, lon, verdict, Instant.now())
+        verdict: String = "ok",
+        checkStatus: String? = null,
+        checkNotes: String? = null
+    ) : this(null, patrolRunId, checkpointId, userId, scannedAt, lat, lon, verdict, checkStatus, checkNotes, Instant.now())
 }
 

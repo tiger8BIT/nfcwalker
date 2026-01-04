@@ -12,7 +12,20 @@ data class CreateCheckpointRequest(
     val code: String,
     val geoLat: BigDecimal? = null,
     val geoLon: BigDecimal? = null,
-    val radiusM: BigDecimal? = null
+    val radiusM: BigDecimal? = null,
+    val label: String? = null,
+    val detailsConfig: ge.tiger8bit.domain.CheckpointDetailsConfig? = null,
+    val subChecks: List<SubCheckRequest>? = null
+)
+
+@Serdeable
+data class UpdateCheckpointRequest(
+    val label: String? = null,
+    val geoLat: java.math.BigDecimal? = null,
+    val geoLon: java.math.BigDecimal? = null,
+    val radiusM: java.math.BigDecimal? = null,
+    val detailsConfig: ge.tiger8bit.domain.CheckpointDetailsConfig? = null,
+    val subChecks: List<SubCheckRequest>? = null
 )
 
 @Serdeable
@@ -23,7 +36,27 @@ data class CheckpointResponse(
     val code: String,
     val geoLat: BigDecimal? = null,
     val geoLon: BigDecimal? = null,
-    val radiusM: BigDecimal? = null
+    val radiusM: BigDecimal? = null,
+    val label: String? = null,
+    val detailsConfig: ge.tiger8bit.domain.CheckpointDetailsConfig? = null,
+    val subChecks: List<SubCheckResponse>? = null
+)
+
+@Serdeable
+data class SubCheckRequest(
+    val label: String,
+    val description: String? = null,
+    val requirePhoto: Boolean = false,
+    val allowNotes: Boolean = true
+)
+
+@Serdeable
+data class SubCheckResponse(
+    val id: UUID,
+    val label: String,
+    val description: String? = null,
+    val requirePhoto: Boolean = false,
+    val allowNotes: Boolean = true
 )
 
 @Serdeable
@@ -130,18 +163,41 @@ data class StartScanResponse(
 )
 
 @Serdeable
+enum class CheckStatus {
+    OK,
+    PROBLEMS_FOUND,
+    SKIPPED
+}
+
+@Serdeable
+enum class ScanVerdict {
+    OK,
+    WARNING,
+    FAIL
+}
+
+@Serdeable
 data class FinishScanRequest(
     val challenge: String,
-    val userId: String,
     val scannedAt: String,
     val lat: BigDecimal? = null,
-    val lon: BigDecimal? = null
+    val lon: BigDecimal? = null,
+    val checkStatus: CheckStatus? = null,
+    val checkNotes: String? = null,
+    val subCheckResults: List<SubCheckResultRequest>? = null
+)
+
+@Serdeable
+data class SubCheckResultRequest(
+    val subCheckId: UUID,
+    val status: CheckStatus,
+    val notes: String? = null
 )
 
 @Serdeable
 data class FinishScanResponse(
     val eventId: UUID,
-    val verdict: String
+    val verdict: ScanVerdict
 )
 
 // ===== Authentication & User Management DTOs =====

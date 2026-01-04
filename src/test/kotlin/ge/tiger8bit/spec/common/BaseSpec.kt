@@ -88,6 +88,7 @@ abstract class BaseApiSpec : StringSpec(), TestPropertyProvider {
             "flyway.datasources.default.schemas" to schemaName,
             "javamail.properties.mail.smtp.host" to mailhog.host,
             "javamail.properties.mail.smtp.port" to smtpPort.toString(),
+            "local" to "true",
         )
 
         addOAuth2PropsIfAvailable(oauth2, props)

@@ -28,6 +28,16 @@ class AdminController(
         return checkpointService.findBySiteId(siteId, userId)
     }
 
+    @Put("/checkpoints/{id}")
+    fun updateCheckpoint(
+        @PathVariable id: UUID,
+        @Body request: UpdateCheckpointRequest,
+        principal: Principal
+    ): CheckpointResponse {
+        val userId = UUID.fromString(principal.name)
+        return checkpointService.update(id, request, userId)
+    }
+
     @Delete("/checkpoints/{id}")
     fun deleteCheckpoint(@PathVariable id: UUID, principal: Principal): Map<String, String> {
         val userId = UUID.fromString(principal.name)

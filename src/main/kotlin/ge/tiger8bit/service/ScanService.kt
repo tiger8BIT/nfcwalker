@@ -1,18 +1,13 @@
 package ge.tiger8bit.service
 
 import ge.tiger8bit.constants.ChallengeConstants
-import ge.tiger8bit.domain.Checkpoint
-import ge.tiger8bit.domain.PatrolRouteCheckpoint
-import ge.tiger8bit.domain.PatrolRun
-import ge.tiger8bit.domain.PatrolScanEvent
+import ge.tiger8bit.domain.*
 import ge.tiger8bit.dto.*
 import ge.tiger8bit.getLogger
-import ge.tiger8bit.repository.CheckpointRepository
-import ge.tiger8bit.repository.PatrolRouteCheckpointRepository
-import ge.tiger8bit.repository.PatrolRunRepository
-import ge.tiger8bit.repository.PatrolScanEventRepository
+import ge.tiger8bit.repository.*
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.exceptions.HttpStatusException
+import io.micronaut.http.multipart.CompletedFileUpload
 import jakarta.inject.Singleton
 import jakarta.transaction.Transactional
 import java.time.Instant
@@ -24,8 +19,12 @@ open class ScanService(
     private val patrolRunRepository: PatrolRunRepository,
     private val patrolRouteCheckpointRepository: PatrolRouteCheckpointRepository,
     private val patrolScanEventRepository: PatrolScanEventRepository,
+    private val checkpointSubCheckRepository: CheckpointSubCheckRepository,
+    private val patrolSubCheckEventRepository: PatrolSubCheckEventRepository,
     private val challengeService: ChallengeService,
-    private val accessService: AccessService
+    private val accessService: AccessService,
+    private val attachmentRepository: AttachmentRepository,
+    private val fileManagementService: Optional<FileManagementService>
 ) {
     private val logger = getLogger()
 
@@ -84,26 +83,111 @@ open class ScanService(
             is ValidationResult.Valid -> {
                 val patrolRun = findActivePatrolRun(orgId)
 
+                logger.debug("Creating scan event for checkpoint: {}", checkpointId)
                 val scanEvent = patrolScanEventRepository.save(
                     PatrolScanEvent(
                         patrolRunId = patrolRun.id!!,
                         checkpointId = checkpointId,
-                        userId = request.userId,
+                        userId = userId,
                         scannedAt = Instant.parse(request.scannedAt),
                         lat = request.lat,
                         lon = request.lon,
-                        verdict = "ok"
+                        verdict = ScanVerdict.OK.name.lowercase(),
+                        checkStatus = request.checkStatus?.name?.lowercase(),
+                        checkNotes = request.checkNotes
                     )
                 )
 
-                logger.info("Scan event recorded: id={}, user={}, cp={}", scanEvent.id, request.userId, checkpointId)
+                logger.info("Scan event recorded: id={}, user={}, cp={}", scanEvent.id, userId, checkpointId)
+
+                // Record sub-check results if any
+                logger.debug("Sub-check results in request: {}", request.subCheckResults)
+                request.subCheckResults?.forEach { subResult ->
+                    logger.info("Saving sub-check result: subCheckId={}, status={}", subResult.subCheckId, subResult.status)
+                    patrolSubCheckEventRepository.save(
+                        PatrolSubCheckEvent(
+                            scanEventId = scanEvent.id!!,
+                            subCheckId = subResult.subCheckId,
+                            status = subResult.status.name.lowercase(),
+                            notes = subResult.notes
+                        )
+                    )
+                }
 
                 return FinishScanResponse(
                     eventId = scanEvent.id!!,
-                    verdict = scanEvent.verdict
+                    verdict = ScanVerdict.OK
                 )
             }
         }
+    }
+
+    @Transactional
+    open fun finishScanWithPhotos(
+        request: FinishScanRequest,
+        photos: List<CompletedFileUpload>,
+        userId: UUID
+    ): FinishScanResponse {
+        val response = finishScan(request, userId)
+        val eventId = response.eventId
+
+        // Get created sub-check events to map them by subCheckId
+        val subCheckEvents = patrolSubCheckEventRepository.findByScanEventId(eventId)
+            .associateBy { it.subCheckId }
+
+        fileManagementService.ifPresent { fms ->
+            photos.forEach { photo ->
+                val partName = photo.name
+
+                // Determine entity for attachment: main event or sub-check event
+                var attachmentEntityType = "scan_event"
+                var attachmentEntityId = eventId
+
+                if (partName.startsWith("photos_")) {
+                    val subCheckIdStr = partName.removePrefix("photos_")
+                    logger.debug("Mapping photo via partName: {}", partName)
+                    try {
+                        val subCheckId = UUID.fromString(subCheckIdStr)
+                        subCheckEvents[subCheckId]?.let { subEvent ->
+                            attachmentEntityType = "sub_check_event"
+                            attachmentEntityId = subEvent.id!!
+                            logger.debug("Mapped to sub-check event: {}", attachmentEntityId)
+                        }
+                    } catch (e: IllegalArgumentException) {
+                        logger.warn("Invalid subCheckId in part name: {}", subCheckIdStr)
+                    }
+                } else if (photo.filename.contains("sub_")) {
+                    // Alternative mapping using filename prefix: sub_{UUID}.jpg
+                    val subCheckIdStr = photo.filename.substringAfter("sub_").substringBefore(".jpg").substringBefore("_")
+                    logger.debug("Mapping photo via filename: {}, subCheckIdStr: {}", photo.filename, subCheckIdStr)
+                    try {
+                        val subCheckId = UUID.fromString(subCheckIdStr)
+                        subCheckEvents[subCheckId]?.let { subEvent ->
+                            attachmentEntityType = "sub_check_event"
+                            attachmentEntityId = subEvent.id!!
+                            logger.debug("Mapped to sub-check event: {}", attachmentEntityId)
+                        }
+                    } catch (e: Exception) {
+                        logger.warn("Invalid subCheckId in filename: {}", photo.filename)
+                    }
+                }
+
+                val path = "scans/$eventId/${UUID.randomUUID()}_${photo.filename}"
+                val filePath = fms.uploadFile(photo, path)
+                attachmentRepository.save(
+                    Attachment(
+                        entityType = attachmentEntityType,
+                        entityId = attachmentEntityId,
+                        filePath = filePath,
+                        originalName = photo.filename,
+                        contentType = photo.contentType.orElse(null)?.toString(),
+                        fileSize = photo.size
+                    )
+                )
+            }
+        }
+
+        return response
     }
 
     private fun buildScanPolicy(
@@ -132,6 +216,7 @@ open class ScanService(
     }
 
     private fun parseChallenge(jws: String): Triple<UUID, String, UUID> {
+        logger.debug("Parsing challenge: '{}'", jws)
         return try {
             val signedJWT = com.nimbusds.jwt.SignedJWT.parse(jws)
             val claims = signedJWT.jwtClaimsSet
@@ -141,7 +226,7 @@ open class ScanService(
                 UUID.fromString(claims.getClaim(ChallengeConstants.Claims.CHECKPOINT) as String)
             )
         } catch (e: Exception) {
-            logger.warn("Invalid challenge format: {}", e.message)
+            logger.warn("Invalid challenge format: {}. Input: '{}'", e.message, jws)
             throw HttpStatusException(HttpStatus.BAD_REQUEST, "Invalid challenge format")
         }
     }

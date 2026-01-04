@@ -4,7 +4,20 @@ import io.micronaut.serde.annotation.Serdeable
 import jakarta.persistence.*
 import java.math.BigDecimal
 import java.time.Instant
-import java.util.UUID
+import java.util.*
+
+@Serdeable
+@Embeddable
+data class CheckpointDetailsConfig(
+    @Column(name = "require_photo")
+    var requirePhoto: Boolean = false,
+
+    @Column(name = "allow_notes")
+    var allowNotes: Boolean = true,
+
+    @Column(name = "description", length = 500)
+    var description: String? = null
+)
 
 @Entity
 @Table(
@@ -39,6 +52,12 @@ class Checkpoint(
     @Column(name = "radius_m", precision = 6, scale = 2)
     var radiusM: BigDecimal? = null,
 
+    @Column(length = 200)
+    var label: String? = null,
+
+    @Embedded
+    var detailsConfig: CheckpointDetailsConfig? = null,
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now()
 ) {
@@ -48,7 +67,9 @@ class Checkpoint(
         code: String,
         geoLat: BigDecimal? = null,
         geoLon: BigDecimal? = null,
-        radiusM: BigDecimal? = null
-    ) : this(null, organizationId, siteId, code, geoLat, geoLon, radiusM, Instant.now())
+        radiusM: BigDecimal? = null,
+        label: String? = null,
+        detailsConfig: CheckpointDetailsConfig? = null
+    ) : this(null, organizationId, siteId, code, geoLat, geoLon, radiusM, label, detailsConfig, Instant.now())
 }
 

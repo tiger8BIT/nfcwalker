@@ -24,22 +24,14 @@ object TestAuth {
         val now = Date()
         val exp = Date(now.time + 3600_000L)
 
-        // Add common JWT claims and multiple representations of roles/scopes so Micronaut
-        // security mapping picks them up regardless of configuration.
-        // produce multiple role representations: original, without ROLE_ prefix, uppercase without prefix
-        val normalizedRoles = roles + roles.map { it.removePrefix("ROLE_") } + roles.map { it.removePrefix("ROLE_").uppercase() }
-        val authorities = normalizedRoles
-
         val claims = JWTClaimsSet.Builder()
             .issuer("test-issuer")
             .audience("test-audience")
             .subject(subject)
             .issueTime(now)
             .expirationTime(exp)
-            .claim("roles", normalizedRoles.distinct())
-            .claim("authorities", authorities.distinct())
-            .claim("permissions", authorities.distinct())
-            .claim("scope", roles.joinToString(" ") { it.removePrefix("ROLE_").lowercase() })
+            .claim("roles", roles)
+            .claim("sub", subject)
             .build()
 
         val signedJWT = SignedJWT(JWSHeader(JWSAlgorithm.HS256), claims)

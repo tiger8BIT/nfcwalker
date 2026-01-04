@@ -17,3 +17,10 @@ out/
 # Environment files
 .env*.local
 
+# Temporary output and logs
+.output_refactored_*.txt
+test_output*.log
+storage/
+.ai/
+.continue/
+

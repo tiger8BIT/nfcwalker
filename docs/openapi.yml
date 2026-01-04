@@ -39,6 +39,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/CheckpointResponse"
   /api/admin/checkpoints/{id}:
+    put:
+      operationId: updateCheckpoint
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCheckpointRequest"
+        required: true
+      responses:
+        "200":
+          description: updateCheckpoint 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckpointResponse"
     delete:
       operationId: deleteCheckpoint
       parameters:
@@ -335,16 +357,47 @@ paths:
                   type: object
   /api/scan/finish:
     post:
-      operationId: finishScan
+      operationId: finishScanMultipart
       requestBody:
         content:
+          multipart/form-data:
+            schema:
+              required:
+                - metadata
+              type: object
+              properties:
+                metadata:
+                  $ref: "#/components/schemas/FinishScanRequest"
+                photos:
+                  type: array
+                  nullable: true
+                  items:
+                    type: string
+                    format: binary
+                subPhotos:
+                  type: array
+                  nullable: true
+                  items:
+                    type: string
+                    format: binary
+            encoding:
+              metadata:
+                contentType: application/octet-stream
+                explode: true
+              subPhotos:
+                contentType: application/octet-stream
+                explode: true
+              photos:
+                contentType: application/octet-stream
+                explode: true
           application/json:
             schema:
               $ref: "#/components/schemas/FinishScanRequest"
+            example: null
         required: true
       responses:
         "200":
-          description: finishScan 200 response
+          description: finishScanMultipart 200 response
           content:
             application/json:
               schema:
@@ -518,35 +571,6 @@ components:
       properties:
         token:
           type: string
-    AuthMeResponse:
-      required:
-        - roles
-        - user
-      type: object
-      properties:
-        user:
-          $ref: "#/components/schemas/UserResponse"
-        roles:
-          type: object
-          additionalProperties:
-            $ref: "#/components/schemas/Role"
-    UserResponse:
-      required:
-        - createdAt
-        - email
-        - id
-        - name
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        email:
-          type: string
-        name:
-          type: string
-        createdAt:
-          type: string
     AddRouteCheckpointRequest:
       required:
       - checkpointId
@@ -567,6 +591,18 @@ components:
         maxOffsetSec:
           type: integer
           format: int32
+    AuthMeResponse:
+      required:
+        - roles
+        - user
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserResponse"
+        roles:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/Role"
     BulkAddRouteCheckpointsRequest:
       required:
       - checkpoints
@@ -576,6 +612,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AddRouteCheckpointRequest"
+    CheckStatus:
+      type: string
+      enum:
+        - OK
+        - PROBLEMS_FOUND
+        - SKIPPED
+    CheckpointDetailsConfig:
+      required:
+        - allowNotes
+        - requirePhoto
+      type: object
+      properties:
+        requirePhoto:
+          type: boolean
+        allowNotes:
+          type: boolean
+        description:
+          type: string
+          nullable: true
     CheckpointResponse:
       required:
       - code
@@ -604,6 +659,18 @@ components:
         radiusM:
           type: number
           nullable: true
+        label:
+          type: string
+          nullable: true
+        detailsConfig:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CheckpointDetailsConfig"
+        subChecks:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/SubCheckResponse"
     CreateCheckpointRequest:
       required:
       - code
@@ -628,6 +695,18 @@ components:
         radiusM:
           type: number
           nullable: true
+        label:
+          type: string
+          nullable: true
+        detailsConfig:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CheckpointDetailsConfig"
+        subChecks:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/SubCheckRequest"
     CreateInvitationRequest:
       required:
       - email
@@ -702,12 +781,9 @@ components:
       required:
       - challenge
       - scannedAt
-      - userId
       type: object
       properties:
         challenge:
-          type: string
-        userId:
           type: string
         scannedAt:
           type: string
@@ -717,6 +793,18 @@ components:
         lon:
           type: number
           nullable: true
+        checkStatus:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CheckStatus"
+        checkNotes:
+          type: string
+          nullable: true
+        subCheckResults:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/SubCheckResultRequest"
     FinishScanResponse:
       required:
       - eventId
@@ -727,7 +815,7 @@ components:
           type: string
           format: uuid
         verdict:
-          type: string
+          $ref: "#/components/schemas/ScanVerdict"
     GeoConstraint:
       required:
       - lat
@@ -838,6 +926,12 @@ components:
           nullable: true
           allOf:
           - $ref: "#/components/schemas/GeoConstraint"
+    ScanVerdict:
+      type: string
+      enum:
+        - OK
+        - WARNING
+        - FAIL
     SiteResponse:
       required:
       - createdAt
@@ -881,6 +975,56 @@ components:
           type: string
         policy:
           $ref: "#/components/schemas/ScanPolicy"
+    SubCheckRequest:
+      required:
+        - allowNotes
+        - label
+        - requirePhoto
+      type: object
+      properties:
+        label:
+          type: string
+        description:
+          type: string
+          nullable: true
+        requirePhoto:
+          type: boolean
+        allowNotes:
+          type: boolean
+    SubCheckResponse:
+      required:
+        - allowNotes
+        - id
+        - label
+        - requirePhoto
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        description:
+          type: string
+          nullable: true
+        requirePhoto:
+          type: boolean
+        allowNotes:
+          type: boolean
+    SubCheckResultRequest:
+      required:
+        - status
+        - subCheckId
+      type: object
+      properties:
+        subCheckId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/CheckStatus"
+        notes:
+          type: string
+          nullable: true
     TimeWindow:
       required:
       - maxOffsetSec
@@ -893,6 +1037,30 @@ components:
         maxOffsetSec:
           type: integer
           format: int32
+    UpdateCheckpointRequest:
+      type: object
+      properties:
+        label:
+          type: string
+          nullable: true
+        geoLat:
+          type: number
+          nullable: true
+        geoLon:
+          type: number
+          nullable: true
+        radiusM:
+          type: number
+          nullable: true
+        detailsConfig:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CheckpointDetailsConfig"
+        subChecks:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/SubCheckRequest"
     UpdateOrganizationRequest:
       required:
       - name
@@ -906,4 +1074,21 @@ components:
       type: object
       properties:
         name:
+          type: string
+    UserResponse:
+      required:
+        - createdAt
+        - email
+        - id
+        - name
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        name:
+          type: string
+        createdAt:
           type: string

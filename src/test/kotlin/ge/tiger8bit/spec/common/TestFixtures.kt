@@ -20,6 +20,10 @@ class TestFixtures @Inject constructor(
     private val challengeUsedRepository: ChallengeUsedRepository,
     private val patrolRouteCheckpointRepository: PatrolRouteCheckpointRepository,
     private val checkpointRepository: CheckpointRepository,
+    private val patrolScanEventRepository: PatrolScanEventRepository,
+    private val checkpointSubCheckRepository: CheckpointSubCheckRepository,
+    private val patrolSubCheckEventRepository: PatrolSubCheckEventRepository,
+    private val attachmentRepository: ge.tiger8bit.repository.AttachmentRepository
 ) {
 
     /**
@@ -29,7 +33,11 @@ class TestFixtures @Inject constructor(
     fun cleanAll() {
         try {
             // Порядок важен из-за FK constraints
+            attachmentRepository.deleteAll()
+            patrolSubCheckEventRepository.deleteAll()
+            patrolScanEventRepository.deleteAll()
             patrolRunRepository.deleteAll()
+            patrolRouteCheckpointRepository.deleteAll()
             patrolRouteRepository.deleteAll()
 
             // Devices, UserRoles
@@ -40,8 +48,8 @@ class TestFixtures @Inject constructor(
             invitationRepository.deleteAll()
             challengeUsedRepository.deleteAll()
 
-            // RouteCheckpoints, Checkpoints
-            patrolRouteCheckpointRepository.deleteAll()
+            // Checkpoints
+            checkpointSubCheckRepository.deleteAll()
             checkpointRepository.deleteAll()
 
             // Users, Sites, Organizations (last due to FK)
@@ -161,5 +169,13 @@ class TestFixtures @Inject constructor(
         )
         deviceRepository.flush()
         return device
+    }
+
+    fun getPatrolSubCheckEvents(scanEventId: UUID): List<PatrolSubCheckEvent> {
+        return patrolSubCheckEventRepository.findByScanEventId(scanEventId)
+    }
+
+    fun getAttachments(entityType: String, entityId: UUID): List<Attachment> {
+        return attachmentRepository.findByEntityTypeAndEntityId(entityType, entityId)
     }
 }

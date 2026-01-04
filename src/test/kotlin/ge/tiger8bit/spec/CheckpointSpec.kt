@@ -1,7 +1,9 @@
 package ge.tiger8bit.spec
 
+import ge.tiger8bit.domain.CheckpointDetailsConfig
 import ge.tiger8bit.dto.CheckpointResponse
 import ge.tiger8bit.dto.CreateCheckpointRequest
+import ge.tiger8bit.dto.SubCheckRequest
 import ge.tiger8bit.spec.common.BaseApiSpec
 import ge.tiger8bit.spec.common.TestData.Emails
 import ge.tiger8bit.spec.common.withAuth
@@ -40,6 +42,62 @@ class CheckpointSpec : BaseApiSpec() {
 
             response.code shouldBe request.code
             response.id shouldNotBe null
+        }
+
+        "BOSS can create checkpoint with label and details config" {
+            val (org, site) = fixtures.seedOrgAndSite()
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
+
+            val details = CheckpointDetailsConfig(requirePhoto = true, allowNotes = true, description = "Check lights")
+            val request = CreateCheckpointRequest(
+                organizationId = org.id!!,
+                siteId = site.id!!,
+                code = "CP-DETAILS",
+                label = "Main Entrance",
+                detailsConfig = details
+            )
+
+            val response = client.toBlocking()
+                .retrieve(
+                    HttpRequest.POST("/api/admin/checkpoints", request).withAuth(bossToken),
+                    CheckpointResponse::class.java
+                )
+
+            response.code shouldBe request.code
+            response.label shouldBe "Main Entrance"
+            response.detailsConfig shouldBe details
+        }
+
+        "BOSS can update checkpoint and sub-checks" {
+            val (org, site) = fixtures.seedOrgAndSite()
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
+
+            val createRequest = CreateCheckpointRequest(
+                organizationId = org.id!!,
+                siteId = site.id!!,
+                code = "CP-UPDATE",
+                subChecks = listOf(SubCheckRequest("Sub 1"))
+            )
+
+            val cp = client.toBlocking().retrieve(
+                HttpRequest.POST("/api/admin/checkpoints", createRequest).withAuth(bossToken),
+                CheckpointResponse::class.java
+            )
+
+            val updateRequest = ge.tiger8bit.dto.UpdateCheckpointRequest(
+                label = "Updated Label",
+                subChecks = listOf(SubCheckRequest("Sub 1 Updated"), SubCheckRequest("Sub 2"))
+            )
+
+            val updated = client.toBlocking().retrieve(
+                HttpRequest.PUT("/api/admin/checkpoints/${cp.id}", updateRequest).withAuth(bossToken),
+                CheckpointResponse::class.java
+            )
+
+            updated.label shouldBe "Updated Label"
+            updated.subChecks?.size shouldBe 2
+            updated.subChecks?.any { it.label == "Sub 1 Updated" } shouldBe true
+            updated.subChecks?.any { it.label == "Sub 2" } shouldBe true
         }
 
         "BOSS can list checkpoints for a site" {

@@ -12,12 +12,7 @@ micronaut:
         signatures:
           secret:
             generator:
-              # 32-byte secret for HS256
-              secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-            default:
-              secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-              generator:
-                secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+              secret: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     oauth2:
       clients:
         google:

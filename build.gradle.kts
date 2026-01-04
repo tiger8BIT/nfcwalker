@@ -28,6 +28,10 @@ dependencies {
     ksp("io.micronaut.security:micronaut-security-annotations")
     ksp("io.micronaut.serde:micronaut-serde-processor")
     ksp("io.micronaut.validation:micronaut-validation-processor")
+    implementation("io.micronaut.aws:micronaut-aws-sdk-v2")
+    implementation("software.amazon.awssdk:s3:2.29.43")
+    implementation("com.google.cloud:google-cloud-storage:2.48.2")
+
     implementation("io.micronaut:micronaut-management")
     implementation("io.micronaut.openapi:micronaut-openapi")
     implementation("io.micronaut:micronaut-http-server-netty")
@@ -129,6 +133,10 @@ java {
 
 graalvmNative.toolchainDetection = false
 
+
+tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar> {
+    isZip64 = true
+}
 
 micronaut {
     runtime("netty")

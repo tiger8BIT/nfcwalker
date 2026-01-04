@@ -42,15 +42,16 @@ open class AccessService(
 
     fun ensureBossOrAppOwner(userId: UUID, orgId: UUID) {
         logger.info("ensureBossOrAppOwner({}, {}) - checking permissions", userId, orgId)
-        if (isAppOwner(userId)) {
+        val userRoles = rolesForUser(userId)
+        if (userRoles.any { it.second == Role.ROLE_APP_OWNER }) {
             logger.info("ensureBossOrAppOwner({}, {}) - PASSED: user is APP_OWNER", userId, orgId)
             return
         }
-        if (hasBossInOrg(userId, orgId)) {
+        if (userRoles.any { it.first == orgId && it.second == Role.ROLE_BOSS }) {
             logger.info("ensureBossOrAppOwner({}, {}) - PASSED: user is BOSS in org", userId, orgId)
             return
         }
-        logger.warn("ensureBossOrAppOwner({}, {}) - DENIED: user has no Boss or AppOwner role", userId, orgId)
+        logger.warn("ensureBossOrAppOwner({}, {}) - DENIED: user has no Boss or AppOwner role. Roles: {}", userId, orgId, userRoles)
         forbidden("Boss or AppOwner role required for organization")
     }
 

@@ -53,17 +53,23 @@ class ReplaySpec : BaseApiSpec() {
             val firstFinish = client.toBlocking().retrieve(
                 HttpRequest.POST(
                     "/api/scan/finish",
-                    FinishScanRequest(start.challenge, workerId.toString(), Instant.now().toString())
+                    FinishScanRequest(
+                        challenge = start.challenge,
+                        scannedAt = Instant.now().toString()
+                    )
                 ).withAuth(workerToken),
                 FinishScanResponse::class.java
             )
-            firstFinish.verdict shouldBe "ok"
+            firstFinish.verdict shouldBe ScanVerdict.OK
 
             val ex = assertThrows<HttpClientResponseException> {
                 client.toBlocking().retrieve(
                     HttpRequest.POST(
                         "/api/scan/finish",
-                        FinishScanRequest(start.challenge, workerId.toString(), Instant.now().toString())
+                        FinishScanRequest(
+                            challenge = start.challenge,
+                            scannedAt = Instant.now().toString()
+                        )
                     ).withAuth(workerToken),
                     FinishScanResponse::class.java
                 )
