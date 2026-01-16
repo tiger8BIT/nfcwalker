@@ -42,12 +42,12 @@ paths:
     put:
       operationId: updateCheckpoint
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
       requestBody:
         content:
           application/json:
@@ -217,6 +217,200 @@ paths:
                 type: object
                 additionalProperties:
                   type: string
+  /api/incidents:
+    get:
+      operationId: listIncidents
+      parameters:
+      - name: organizationId
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: string
+          format: uuid
+      - name: siteId
+        in: query
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          nullable: true
+      - name: status
+        in: query
+        explode: false
+        schema:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/IncidentStatus"
+      responses:
+        "200":
+          description: listIncidents 200 response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IncidentResponse"
+    post:
+      operationId: createIncident
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              required:
+              - metadata
+              type: object
+              properties:
+                metadata:
+                  $ref: "#/components/schemas/IncidentCreateRequest"
+                photos:
+                  type: array
+                  nullable: true
+                  items:
+                    type: string
+                    format: binary
+            encoding:
+              metadata:
+                contentType: application/octet-stream
+                explode: true
+              photos:
+                contentType: application/octet-stream
+                explode: true
+        required: true
+      responses:
+        "200":
+          description: createIncident 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncidentResponse"
+  /api/incidents/{id}:
+    get:
+      operationId: getIncident
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: getIncident 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncidentResponse"
+    delete:
+      operationId: deleteIncident
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: deleteIncident 200 response
+    patch:
+      operationId: patchIncident
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncidentPatchRequest"
+        required: true
+      responses:
+        "200":
+          description: patchIncident 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncidentResponse"
+  /api/incidents/{id}/attach-scan/{scanEventId}:
+    post:
+      operationId: attachToScan
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: scanEventId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: attachToScan 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncidentResponse"
+  /api/incidents/{id}/photos:
+    post:
+      operationId: addPhotosToIncident
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                photos:
+                  type: array
+                  nullable: true
+                  items:
+                    type: string
+                    format: binary
+            encoding:
+              photos:
+                contentType: application/octet-stream
+                explode: false
+        required: true
+      responses:
+        "200":
+          description: addPhotosToIncident 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/incidents/{id}/photos/{photoId}:
+    delete:
+      operationId: deletePhotoFromIncident
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: deletePhotoFromIncident 200 response
   /api/invitations:
     get:
       operationId: getInvitations
@@ -355,6 +549,59 @@ paths:
                 type: object
                 additionalProperties:
                   type: object
+  /api/scan/events/{eventId}/photos:
+    post:
+      operationId: addPhotosToScanEvent
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                photos:
+                  type: array
+                  nullable: true
+                  items:
+                    type: string
+                    format: binary
+            encoding:
+              photos:
+                contentType: application/octet-stream
+                explode: false
+        required: true
+      responses:
+        "200":
+          description: addPhotosToScanEvent 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/scan/events/{eventId}/photos/{photoId}:
+    delete:
+      operationId: deletePhotoFromScanEvent
+      parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: deletePhotoFromScanEvent 200 response
   /api/scan/finish:
     post:
       operationId: finishScanMultipart
@@ -363,7 +610,7 @@ paths:
           multipart/form-data:
             schema:
               required:
-                - metadata
+              - metadata
               type: object
               properties:
                 metadata:
@@ -374,22 +621,13 @@ paths:
                   items:
                     type: string
                     format: binary
-                subPhotos:
-                  type: array
-                  nullable: true
-                  items:
-                    type: string
-                    format: binary
             encoding:
               metadata:
                 contentType: application/octet-stream
-                explode: true
-              subPhotos:
-                contentType: application/octet-stream
-                explode: true
+                explode: false
               photos:
                 contentType: application/octet-stream
-                explode: true
+                explode: false
           application/json:
             schema:
               $ref: "#/components/schemas/FinishScanRequest"
@@ -593,8 +831,8 @@ components:
           format: int32
     AuthMeResponse:
       required:
-        - roles
-        - user
+      - roles
+      - user
       type: object
       properties:
         user:
@@ -615,13 +853,13 @@ components:
     CheckStatus:
       type: string
       enum:
-        - OK
-        - PROBLEMS_FOUND
-        - SKIPPED
+      - OK
+      - PROBLEMS_FOUND
+      - SKIPPED
     CheckpointDetailsConfig:
       required:
-        - allowNotes
-        - requirePhoto
+      - allowNotes
+      - requirePhoto
       type: object
       properties:
         requirePhoto:
@@ -665,7 +903,7 @@ components:
         detailsConfig:
           nullable: true
           allOf:
-            - $ref: "#/components/schemas/CheckpointDetailsConfig"
+          - $ref: "#/components/schemas/CheckpointDetailsConfig"
         subChecks:
           type: array
           nullable: true
@@ -701,7 +939,7 @@ components:
         detailsConfig:
           nullable: true
           allOf:
-            - $ref: "#/components/schemas/CheckpointDetailsConfig"
+          - $ref: "#/components/schemas/CheckpointDetailsConfig"
         subChecks:
           type: array
           nullable: true
@@ -796,7 +1034,7 @@ components:
         checkStatus:
           nullable: true
           allOf:
-            - $ref: "#/components/schemas/CheckStatus"
+          - $ref: "#/components/schemas/CheckStatus"
         checkNotes:
           type: string
           nullable: true
@@ -805,6 +1043,11 @@ components:
           nullable: true
           items:
             $ref: "#/components/schemas/SubCheckResultRequest"
+        incidents:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/IncidentCreateRequest"
     FinishScanResponse:
       required:
       - eventId
@@ -829,6 +1072,105 @@ components:
           type: number
         radiusM:
           type: number
+    IncidentCreateRequest:
+      required:
+      - description
+      - severity
+      type: object
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+          nullable: true
+        siteId:
+          type: string
+          format: uuid
+          nullable: true
+        description:
+          type: string
+        severity:
+          $ref: "#/components/schemas/IncidentSeverity"
+        checkpointId:
+          type: string
+          format: uuid
+          nullable: true
+        scanEventId:
+          type: string
+          format: uuid
+          nullable: true
+    IncidentPatchRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          nullable: true
+        severity:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/IncidentSeverity"
+        status:
+          nullable: true
+          allOf:
+          - $ref: "#/components/schemas/IncidentStatus"
+    IncidentResponse:
+      required:
+      - createdAt
+      - description
+      - id
+      - organizationId
+      - reportedBy
+      - severity
+      - siteId
+      - status
+      - updatedAt
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        siteId:
+          type: string
+          format: uuid
+        checkpointId:
+          type: string
+          format: uuid
+          nullable: true
+        scanEventId:
+          type: string
+          format: uuid
+          nullable: true
+        reportedBy:
+          type: string
+          format: uuid
+        description:
+          type: string
+        severity:
+          $ref: "#/components/schemas/IncidentSeverity"
+        status:
+          $ref: "#/components/schemas/IncidentStatus"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    IncidentSeverity:
+      type: string
+      enum:
+      - LOW
+      - MEDIUM
+      - HIGH
+      - CRITICAL
+    IncidentStatus:
+      type: string
+      enum:
+      - OPEN
+      - IN_PROGRESS
+      - RESOLVED
+      - CLOSED
     InvitationResponse:
       required:
       - email
@@ -929,9 +1271,9 @@ components:
     ScanVerdict:
       type: string
       enum:
-        - OK
-        - WARNING
-        - FAIL
+      - OK
+      - WARNING
+      - FAIL
     SiteResponse:
       required:
       - createdAt
@@ -977,9 +1319,9 @@ components:
           $ref: "#/components/schemas/ScanPolicy"
     SubCheckRequest:
       required:
-        - allowNotes
-        - label
-        - requirePhoto
+      - allowNotes
+      - label
+      - requirePhoto
       type: object
       properties:
         label:
@@ -993,10 +1335,10 @@ components:
           type: boolean
     SubCheckResponse:
       required:
-        - allowNotes
-        - id
-        - label
-        - requirePhoto
+      - allowNotes
+      - id
+      - label
+      - requirePhoto
       type: object
       properties:
         id:
@@ -1013,8 +1355,8 @@ components:
           type: boolean
     SubCheckResultRequest:
       required:
-        - status
-        - subCheckId
+      - status
+      - subCheckId
       type: object
       properties:
         subCheckId:
@@ -1055,7 +1397,7 @@ components:
         detailsConfig:
           nullable: true
           allOf:
-            - $ref: "#/components/schemas/CheckpointDetailsConfig"
+          - $ref: "#/components/schemas/CheckpointDetailsConfig"
         subChecks:
           type: array
           nullable: true
@@ -1077,10 +1419,10 @@ components:
           type: string
     UserResponse:
       required:
-        - createdAt
-        - email
-        - id
-        - name
+      - createdAt
+      - email
+      - id
+      - name
       type: object
       properties:
         id:

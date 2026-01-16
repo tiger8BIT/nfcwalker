@@ -155,7 +155,7 @@ CREATE TABLE patrol_scan_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patrol_run_id UUID NOT NULL,
     checkpoint_id UUID NOT NULL,
-    user_id VARCHAR(200) NOT NULL,
+    user_id UUID NOT NULL,
     scanned_at TIMESTAMP NOT NULL,
     lat NUMERIC(10, 7),
     lon NUMERIC(10, 7),

@@ -5,9 +5,12 @@ import ge.tiger8bit.spec.common.BaseApiSpec
 import ge.tiger8bit.spec.common.TestData.Emails
 import ge.tiger8bit.spec.common.withAuth
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.micronaut.http.HttpRequest
+import io.micronaut.http.MediaType
+import io.micronaut.http.client.multipart.MultipartBody
 import io.micronaut.test.extensions.kotest5.annotation.MicronautTest
 import jakarta.inject.Inject
 import java.math.BigDecimal
@@ -209,15 +212,19 @@ class ScanFlowSpec : BaseApiSpec() {
                 )
             )
 
-            val body = io.micronaut.http.client.multipart.MultipartBody.builder()
+            val fileName1 = "sub_${subCheck1Id}_1.jpg"
+            val fileName2 = "sub_${subCheck1Id}_2.jpg"
+
+            val body = MultipartBody.builder()
                 .addPart(
                     "metadata",
                     "metadata.json",
-                    io.micronaut.http.MediaType.APPLICATION_JSON_TYPE,
+                    MediaType.APPLICATION_JSON_TYPE,
                     objectMapper.writeValueAsBytes(finishRequest)
                 )
-                .addPart("photos", "parent.jpg", io.micronaut.http.MediaType.IMAGE_JPEG_TYPE, "parent-photo".toByteArray())
-                .addPart("subPhotos", "sub_$subCheck1Id.jpg", io.micronaut.http.MediaType.IMAGE_JPEG_TYPE, "sub1-photo".toByteArray())
+                .addPart("photos", "parent.jpg", MediaType.IMAGE_JPEG_TYPE, "parent-photo".toByteArray())
+                .addPart("photos", fileName1, MediaType.IMAGE_JPEG_TYPE, "sub1-photo".toByteArray())
+                .addPart("photos", fileName2, MediaType.IMAGE_JPEG_TYPE, "sub2-photo".toByteArray())
                 .build()
 
             val finish = client.toBlocking().retrieve(
@@ -249,8 +256,137 @@ class ScanFlowSpec : BaseApiSpec() {
             mainAttachments[0].originalName shouldBe "parent.jpg"
 
             val sub1Attachments = fixtures.getAttachments("sub_check_event", s1.id!!)
-            sub1Attachments.size shouldBe 1
-            sub1Attachments[0].originalName shouldBe "sub_$subCheck1Id.jpg"
+            sub1Attachments.size shouldBe 2
+            sub1Attachments[0].originalName shouldBe fileName1
+            sub1Attachments[1].originalName shouldBe fileName2
+        }
+
+        "add photos to scan event" {
+            val (org, site) = fixtures.seedOrgAndSite()
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
+
+            val cp = client.toBlocking().retrieve(
+                HttpRequest.POST(
+                    "/api/admin/checkpoints",
+                    CreateCheckpointRequest(org.id!!, site.id!!, "CP-SCAN-PHOTO", BigDecimal("41.7"), BigDecimal("44.8"), BigDecimal("100"))
+                ).withAuth(bossToken),
+                CheckpointResponse::class.java
+            )
+
+            val route = fixtures.createRoute(org.id!!, site.id!!)
+            client.toBlocking().retrieve(
+                HttpRequest.POST(
+                    "/api/admin/routes/${route.id}/points",
+                    BulkAddRouteCheckpointsRequest(listOf(AddRouteCheckpointRequest(cp.id, 1, 0, 3600)))
+                ).withAuth(bossToken),
+                Map::class.java
+            )
+
+            fixtures.createPatrolRun(route.id!!, org.id!!)
+
+            val (workerToken, workerId) = specHelpers.createWorkerToken(org.id!!, email = Emails.unique("worker"))
+            val deviceId = "device-scan-photo-test"
+            fixtures.createDevice(workerId, org.id!!, deviceId = deviceId)
+
+            val start = client.toBlocking().retrieve(
+                HttpRequest.POST("/api/scan/start", StartScanRequest(org.id!!, deviceId, cp.code)).withAuth(workerToken),
+                StartScanResponse::class.java
+            )
+
+            val finish = client.toBlocking().retrieve(
+                HttpRequest.POST(
+                    "/api/scan/finish",
+                    FinishScanRequest(
+                        challenge = start.challenge,
+                        scannedAt = Instant.now().toString()
+                    )
+                ).withAuth(workerToken),
+                FinishScanResponse::class.java
+            )
+
+            val initialAttachments = fixtures.getAttachments("scan_event", finish.eventId)
+            initialAttachments.shouldHaveSize(0)
+
+            val body = MultipartBody.builder()
+                .addPart("photos", "scan1.jpg", MediaType.IMAGE_JPEG_TYPE, "content1".toByteArray())
+                .addPart("photos", "scan2.jpg", MediaType.IMAGE_JPEG_TYPE, "content2".toByteArray())
+                .build()
+
+            client.toBlocking().exchange<Any, Any>(
+                HttpRequest.POST<Any>("/api/scan/events/${finish.eventId}/photos", body)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .withAuth(workerToken)
+            )
+
+            val attachments = fixtures.getAttachments("scan_event", finish.eventId)
+            attachments.shouldHaveSize(2)
+            attachments.map { it.originalName }.toSet() shouldBe setOf("scan1.jpg", "scan2.jpg")
+        }
+
+        "delete photo from scan event" {
+            val (org, site) = fixtures.seedOrgAndSite()
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
+
+            val cp = client.toBlocking().retrieve(
+                HttpRequest.POST(
+                    "/api/admin/checkpoints",
+                    CreateCheckpointRequest(
+                        org.id!!,
+                        site.id!!,
+                        "CP-SCAN-DELETE",
+                        BigDecimal("41.7"),
+                        BigDecimal("44.8"),
+                        BigDecimal("100")
+                    )
+                ).withAuth(bossToken),
+                CheckpointResponse::class.java
+            )
+
+            val route = fixtures.createRoute(org.id!!, site.id!!)
+            client.toBlocking().retrieve(
+                HttpRequest.POST(
+                    "/api/admin/routes/${route.id}/points",
+                    BulkAddRouteCheckpointsRequest(listOf(AddRouteCheckpointRequest(cp.id, 1, 0, 3600)))
+                ).withAuth(bossToken),
+                Map::class.java
+            )
+
+            fixtures.createPatrolRun(route.id!!, org.id!!)
+
+            val (workerToken, workerId) = specHelpers.createWorkerToken(org.id!!, email = Emails.unique("worker"))
+            val deviceId = "device-scan-delete-test"
+            fixtures.createDevice(workerId, org.id!!, deviceId = deviceId)
+
+            val start = client.toBlocking().retrieve(
+                HttpRequest.POST("/api/scan/start", StartScanRequest(org.id!!, deviceId, cp.code)).withAuth(workerToken),
+                StartScanResponse::class.java
+            )
+
+            val finishRequest = FinishScanRequest(
+                challenge = start.challenge,
+                scannedAt = Instant.now().toString()
+            )
+
+            val body = MultipartBody.builder()
+                .addPart("metadata", "metadata.json", MediaType.APPLICATION_JSON_TYPE, objectMapper.writeValueAsBytes(finishRequest))
+                .addPart("photos", "scan.jpg", MediaType.IMAGE_JPEG_TYPE, "content".toByteArray())
+                .build()
+
+            val finish = client.toBlocking().retrieve(
+                HttpRequest.POST("/api/scan/finish", body).contentType(MediaType.MULTIPART_FORM_DATA).withAuth(workerToken),
+                FinishScanResponse::class.java
+            )
+
+            val attachments = fixtures.getAttachments("scan_event", finish.eventId)
+            attachments.shouldHaveSize(1)
+            val photoId = attachments[0].id!!
+
+            client.toBlocking().exchange<Any, Any>(
+                HttpRequest.DELETE<Any>("/api/scan/events/${finish.eventId}/photos/$photoId").withAuth(workerToken)
+            )
+
+            val remainingAttachments = fixtures.getAttachments("scan_event", finish.eventId)
+            remainingAttachments.shouldHaveSize(0)
         }
     }
 }

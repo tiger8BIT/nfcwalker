@@ -21,9 +21,9 @@ data class CreateCheckpointRequest(
 @Serdeable
 data class UpdateCheckpointRequest(
     val label: String? = null,
-    val geoLat: java.math.BigDecimal? = null,
-    val geoLon: java.math.BigDecimal? = null,
-    val radiusM: java.math.BigDecimal? = null,
+    val geoLat: BigDecimal? = null,
+    val geoLon: BigDecimal? = null,
+    val radiusM: BigDecimal? = null,
     val detailsConfig: ge.tiger8bit.domain.CheckpointDetailsConfig? = null,
     val subChecks: List<SubCheckRequest>? = null
 )
@@ -184,7 +184,8 @@ data class FinishScanRequest(
     val lon: BigDecimal? = null,
     val checkStatus: CheckStatus? = null,
     val checkNotes: String? = null,
-    val subCheckResults: List<SubCheckResultRequest>? = null
+    val subCheckResults: List<SubCheckResultRequest>? = null,
+    val incidents: List<IncidentCreateRequest>? = null
 )
 
 @Serdeable
@@ -252,4 +253,54 @@ data class AcceptInvitationRequest(
 data class AuthMeResponse(
     val user: UserResponse,
     val roles: Map<String, Role>
+)
+
+// ===== Incident DTOs =====
+
+@Serdeable
+enum class IncidentSeverity {
+    LOW,
+    MEDIUM,
+    HIGH,
+    CRITICAL
+}
+
+@Serdeable
+enum class IncidentStatus {
+    OPEN,
+    IN_PROGRESS,
+    RESOLVED,
+    CLOSED
+}
+
+@Serdeable
+data class IncidentCreateRequest(
+    val organizationId: UUID? = null,
+    val siteId: UUID? = null,
+    val description: String,
+    val severity: IncidentSeverity = IncidentSeverity.MEDIUM,
+    val checkpointId: UUID? = null,
+    val scanEventId: UUID? = null
+)
+
+@Serdeable
+data class IncidentResponse(
+    val id: UUID,
+    val organizationId: UUID,
+    val siteId: UUID,
+    val checkpointId: UUID?,
+    val scanEventId: UUID?,
+    val reportedBy: UUID,
+    val description: String,
+    val severity: IncidentSeverity,
+    val status: IncidentStatus,
+    val createdAt: java.time.Instant,
+    val updatedAt: java.time.Instant
+)
+
+@Serdeable
+data class IncidentPatchRequest(
+    val description: String? = null,
+    val severity: IncidentSeverity? = null,
+    val status: IncidentStatus? = null
 )

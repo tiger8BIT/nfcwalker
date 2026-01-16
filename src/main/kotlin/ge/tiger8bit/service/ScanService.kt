@@ -24,7 +24,9 @@ open class ScanService(
     private val challengeService: ChallengeService,
     private val accessService: AccessService,
     private val attachmentRepository: AttachmentRepository,
-    private val fileManagementService: Optional<FileManagementService>
+    private val fileManagementService: Optional<FileManagementService>,
+    private val incidentService: IncidentService,
+    private val incidentRepository: IncidentRepository
 ) {
     private val logger = getLogger()
 
@@ -114,6 +116,20 @@ open class ScanService(
                     )
                 }
 
+                // Create incidents if any
+                val checkpoint = checkpointRepository.findById(checkpointId).orElse(null)
+                request.incidents?.forEach { incidentRequest ->
+                    logger.info("Creating incident during scan: description={}", incidentRequest.description)
+                    incidentService.createIncidentInternal(
+                        orgId = orgId,
+                        siteId = checkpoint?.siteId ?: throw HttpStatusException(HttpStatus.BAD_REQUEST, "Checkpoint not found"),
+                        checkpointId = checkpointId,
+                        scanEventId = scanEvent.id!!,
+                        userId = userId,
+                        request = incidentRequest
+                    )
+                }
+
                 return FinishScanResponse(
                     eventId = scanEvent.id!!,
                     verdict = ScanVerdict.OK
@@ -135,15 +151,47 @@ open class ScanService(
         val subCheckEvents = patrolSubCheckEventRepository.findByScanEventId(eventId)
             .associateBy { it.subCheckId }
 
+        // Get created incidents to map photos (in the same transaction, so they're visible)
+        val incidents = incidentRepository.findByScanEventId(eventId)
+            .map { incident ->
+                IncidentResponse(
+                    id = incident.id!!,
+                    organizationId = incident.organizationId,
+                    siteId = incident.siteId,
+                    checkpointId = incident.checkpointId,
+                    scanEventId = incident.scanEventId,
+                    reportedBy = incident.reportedBy,
+                    description = incident.description,
+                    severity = IncidentSeverity.valueOf(incident.severity),
+                    status = IncidentStatus.valueOf(incident.status),
+                    createdAt = incident.createdAt,
+                    updatedAt = incident.updatedAt
+                )
+            }
+
         fileManagementService.ifPresent { fms ->
             photos.forEach { photo ->
                 val partName = photo.name
 
-                // Determine entity for attachment: main event or sub-check event
+                // Determine entity for attachment: main event, sub-check event, or incident
                 var attachmentEntityType = "scan_event"
                 var attachmentEntityId = eventId
 
-                if (partName.startsWith("photos_")) {
+                // Check if photo is for an incident (incidentPhotos_{index})
+                if (partName.startsWith("incidentPhotos_")) {
+                    val incidentIndexStr = partName.removePrefix("incidentPhotos_")
+                    logger.debug("Mapping photo via partName: {}", partName)
+                    try {
+                        val incidentIndex = incidentIndexStr.toIntOrNull()
+                        if (incidentIndex != null && incidentIndex < incidents.size) {
+                            attachmentEntityType = "incident"
+                            attachmentEntityId = incidents[incidentIndex].id
+                            logger.debug("Mapped to incident: {}", attachmentEntityId)
+                        }
+                    } catch (e: Exception) {
+                        logger.warn("Invalid incident index in part name: {}", incidentIndexStr)
+                    }
+                } else if (partName.startsWith("photos_")) {
                     val subCheckIdStr = partName.removePrefix("photos_")
                     logger.debug("Mapping photo via partName: {}", partName)
                     try {
@@ -172,7 +220,10 @@ open class ScanService(
                     }
                 }
 
-                val path = "scans/$eventId/${UUID.randomUUID()}_${photo.filename}"
+                val path = when (attachmentEntityType) {
+                    "incident" -> "incidents/$attachmentEntityId/${UUID.randomUUID()}_${photo.filename}"
+                    else -> "scans/$eventId/${UUID.randomUUID()}_${photo.filename}"
+                }
                 val filePath = fms.uploadFile(photo, path)
                 attachmentRepository.save(
                     Attachment(
@@ -229,6 +280,62 @@ open class ScanService(
             logger.warn("Invalid challenge format: {}. Input: '{}'", e.message, jws)
             throw HttpStatusException(HttpStatus.BAD_REQUEST, "Invalid challenge format")
         }
+    }
+
+    @Transactional
+    open fun addPhotosToScanEvent(scanEventId: UUID, photos: List<CompletedFileUpload>, userId: UUID) {
+        val scanEvent = patrolScanEventRepository.findById(scanEventId)
+            .orElseThrow { HttpStatusException(HttpStatus.NOT_FOUND, "Scan event not found") }
+
+        val patrolRun = patrolRunRepository.findById(scanEvent.patrolRunId)
+            .orElseThrow { HttpStatusException(HttpStatus.NOT_FOUND, "Patrol run not found") }
+
+        accessService.ensureWorkerOrBoss(userId, patrolRun.organizationId)
+
+        fileManagementService.ifPresent { fms ->
+            photos.forEach { photo ->
+                val path = "scans/$scanEventId/${UUID.randomUUID()}_${photo.filename}"
+                val filePath = fms.uploadFile(photo, path)
+                attachmentRepository.save(
+                    Attachment(
+                        entityType = "scan_event",
+                        entityId = scanEventId,
+                        filePath = filePath,
+                        originalName = photo.filename,
+                        contentType = photo.contentType.orElse(null)?.toString(),
+                        fileSize = photo.size
+                    )
+                )
+            }
+        }
+    }
+
+    @Transactional
+    open fun deletePhotoFromScanEvent(scanEventId: UUID, photoId: UUID, userId: UUID) {
+        val scanEvent = patrolScanEventRepository.findById(scanEventId)
+            .orElseThrow { HttpStatusException(HttpStatus.NOT_FOUND, "Scan event not found") }
+
+        val patrolRun = patrolRunRepository.findById(scanEvent.patrolRunId)
+            .orElseThrow { HttpStatusException(HttpStatus.NOT_FOUND, "Patrol run not found") }
+
+        accessService.ensureWorkerOrBoss(userId, patrolRun.organizationId)
+
+        val attachment = attachmentRepository.findById(photoId)
+            .orElseThrow { HttpStatusException(HttpStatus.NOT_FOUND, "Photo not found") }
+
+        if (attachment.entityType != "scan_event" || attachment.entityId != scanEventId) {
+            throw HttpStatusException(HttpStatus.BAD_REQUEST, "Photo does not belong to this scan event")
+        }
+
+        fileManagementService.ifPresent { fms ->
+            try {
+                fms.deleteFile(attachment.filePath)
+            } catch (e: Exception) {
+                logger.warn("Failed to delete file: ${attachment.filePath}", e)
+            }
+        }
+
+        attachmentRepository.delete(attachment)
     }
 
     private fun findActivePatrolRun(orgId: UUID): PatrolRun {
