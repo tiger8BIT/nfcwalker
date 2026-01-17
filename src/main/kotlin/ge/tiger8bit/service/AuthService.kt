@@ -3,6 +3,7 @@ package ge.tiger8bit.service
 import ge.tiger8bit.domain.Role
 import ge.tiger8bit.domain.User
 import ge.tiger8bit.domain.UserRole
+import ge.tiger8bit.dto.InvitationStatus
 import ge.tiger8bit.getLogger
 import ge.tiger8bit.repository.InvitationRepository
 import ge.tiger8bit.repository.UserRepository
@@ -65,7 +66,7 @@ open class AuthService(
         val inv = invitation.get()
 
         // Check status
-        if (inv.status != "pending") {
+        if (inv.status != InvitationStatus.PENDING) {
             logger.warn("Invitation already processed: {}", invitationToken)
             return false
         }
@@ -73,7 +74,7 @@ open class AuthService(
         // Check expiration
         if (Instant.now().isAfter(inv.expiresAt)) {
             logger.warn("Invitation expired: {}", invitationToken)
-            inv.status = "expired"
+            inv.status = InvitationStatus.EXPIRED
             invitationRepository.update(inv)
             return false
         }
@@ -87,7 +88,7 @@ open class AuthService(
         userRoleRepository.save(userRole)
 
         // Mark invitation as accepted
-        inv.status = "accepted"
+        inv.status = InvitationStatus.ACCEPTED
         inv.acceptedAt = Instant.now()
         invitationRepository.update(inv)
 

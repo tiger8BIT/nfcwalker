@@ -3,6 +3,7 @@ package ge.tiger8bit.spec
 import ge.tiger8bit.domain.Role
 import ge.tiger8bit.dto.CreateInvitationRequest
 import ge.tiger8bit.dto.InvitationResponse
+import ge.tiger8bit.dto.InvitationStatus
 import ge.tiger8bit.spec.common.BaseApiSpec
 import ge.tiger8bit.spec.common.MailhogHelper
 import ge.tiger8bit.spec.common.TestData.Emails
@@ -35,7 +36,7 @@ class InvitationFlowSpec : BaseApiSpec() {
 
             response.email shouldBe inviteEmail
             response.role shouldBe Role.ROLE_BOSS
-            response.status shouldBe "pending"
+            response.status shouldBe InvitationStatus.PENDING
 
             val email = MailhogHelper.waitForMessage(inviteEmail)
             MailhogHelper.assertMessageSentTo(email, inviteEmail)
@@ -56,7 +57,7 @@ class InvitationFlowSpec : BaseApiSpec() {
 
             response.email shouldBe inviteEmail
             response.role shouldBe Role.ROLE_WORKER
-            response.status shouldBe "pending"
+            response.status shouldBe InvitationStatus.PENDING
 
             val email = MailhogHelper.waitForMessage(inviteEmail)
             MailhogHelper.assertMessageSentTo(email, inviteEmail)

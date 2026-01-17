@@ -1,9 +1,12 @@
 package ge.tiger8bit.domain
 
+import ge.tiger8bit.dto.PatrolRunStatus
 import io.micronaut.serde.annotation.Serdeable
 import jakarta.persistence.*
+import org.hibernate.annotations.JdbcType
+import org.hibernate.dialect.PostgreSQLEnumJdbcType
 import java.time.Instant
-import java.util.UUID
+import java.util.*
 
 @Entity
 @Table(
@@ -32,13 +35,15 @@ class PatrolRun(
     @Column(name = "planned_end", nullable = false)
     var plannedEnd: Instant = Instant.now(),
 
-    @Column(nullable = false, length = 50)
-    var status: String = "pending",
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType::class)
+    @Column(nullable = false)
+    var status: PatrolRunStatus = PatrolRunStatus.PENDING,
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now()
 ) {
-    constructor(routeId: UUID, organizationId: UUID, plannedStart: Instant, plannedEnd: Instant, status: String)
+    constructor(routeId: UUID, organizationId: UUID, plannedStart: Instant, plannedEnd: Instant, status: PatrolRunStatus)
         : this(null, routeId, organizationId, plannedStart, plannedEnd, status, Instant.now())
 }
 

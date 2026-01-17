@@ -2,8 +2,18 @@ package ge.tiger8bit.domain
 
 import io.micronaut.serde.annotation.Serdeable
 import jakarta.persistence.*
+import org.hibernate.annotations.JdbcType
+import org.hibernate.dialect.PostgreSQLEnumJdbcType
 import java.time.Instant
 import java.util.*
+
+@Serdeable
+enum class AttachmentEntityType {
+    checkpoint,
+    scan_event,
+    sub_check_event,
+    incident
+}
 
 @Entity
 @Table(
@@ -18,8 +28,10 @@ class Attachment(
     @GeneratedValue(strategy = GenerationType.UUID)
     var id: UUID? = null,
 
-    @Column(name = "entity_type", nullable = false, length = 50)
-    var entityType: String = "",
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType::class)
+    @Column(name = "entity_type", nullable = false)
+    var entityType: AttachmentEntityType = AttachmentEntityType.checkpoint,
 
     @Column(name = "entity_id", nullable = false)
     var entityId: UUID = UUID(0, 0),
@@ -40,7 +52,7 @@ class Attachment(
     var createdAt: Instant = Instant.now()
 ) {
     constructor(
-        entityType: String,
+        entityType: AttachmentEntityType,
         entityId: UUID,
         filePath: String,
         originalName: String? = null,

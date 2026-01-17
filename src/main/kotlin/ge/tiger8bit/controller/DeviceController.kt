@@ -42,15 +42,7 @@ class DeviceController(
             HttpResponse.created(device.toResponse())
         } catch (e: IllegalArgumentException) {
             logger.warn("Failed to register device: {}", e.message)
-            HttpResponse.badRequest(
-                DeviceResponse(
-                    id = UUID.randomUUID(),
-                    deviceId = request.deviceId,
-                    status = "error",
-                    registeredAt = "",
-                    metadata = request.metadata
-                )
-            )
+            HttpResponse.badRequest()
         }
     }
 
@@ -95,8 +87,8 @@ class DeviceController(
             deviceId = this.deviceId,
             metadata = this.metadata,
             status = this.status,
-            registeredAt = formatter.format(this.registeredAt),
-            lastUsedAt = this.lastUsedAt?.let { formatter.format(it) }
+            registeredAt = this.registeredAt,
+            lastUsedAt = this.lastUsedAt
         )
     }
 }

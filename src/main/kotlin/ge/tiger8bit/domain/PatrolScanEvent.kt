@@ -1,7 +1,11 @@
 package ge.tiger8bit.domain
 
+import ge.tiger8bit.dto.CheckStatus
+import ge.tiger8bit.dto.ScanVerdict
 import io.micronaut.serde.annotation.Serdeable
 import jakarta.persistence.*
+import org.hibernate.annotations.JdbcType
+import org.hibernate.dialect.PostgreSQLEnumJdbcType
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.*
@@ -40,11 +44,15 @@ class PatrolScanEvent(
     @Column(precision = 10, scale = 7)
     var lon: BigDecimal? = null,
 
-    @Column(nullable = false, length = 50)
-    var verdict: String = "ok",
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType::class)
+    @Column(nullable = false)
+    var verdict: ScanVerdict = ScanVerdict.OK,
 
-    @Column(name = "check_status", length = 50)
-    var checkStatus: String? = null,
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType::class)
+    @Column(name = "check_status")
+    var checkStatus: CheckStatus? = null,
 
     @Column(name = "check_notes", columnDefinition = "text")
     var checkNotes: String? = null,
@@ -59,8 +67,8 @@ class PatrolScanEvent(
         scannedAt: Instant,
         lat: BigDecimal? = null,
         lon: BigDecimal? = null,
-        verdict: String = "ok",
-        checkStatus: String? = null,
+        verdict: ScanVerdict = ScanVerdict.OK,
+        checkStatus: CheckStatus? = null,
         checkNotes: String? = null
     ) : this(null, patrolRunId, checkpointId, userId, scannedAt, lat, lon, verdict, checkStatus, checkNotes, Instant.now())
 }

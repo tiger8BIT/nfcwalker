@@ -179,7 +179,7 @@ enum class ScanVerdict {
 @Serdeable
 data class FinishScanRequest(
     val challenge: String,
-    val scannedAt: String,
+    val scannedAt: java.time.Instant,
     val lat: BigDecimal? = null,
     val lon: BigDecimal? = null,
     val checkStatus: CheckStatus? = null,
@@ -204,11 +204,20 @@ data class FinishScanResponse(
 // ===== Authentication & User Management DTOs =====
 
 @Serdeable
+enum class PatrolRunStatus {
+    PENDING,
+    IN_PROGRESS,
+    COMPLETED,
+    CANCELLED,
+    MISSED
+}
+
+@Serdeable
 data class UserResponse(
     val id: UUID,
     val email: String,
     val name: String,
-    val createdAt: String
+    val createdAt: java.time.Instant
 )
 
 @Serdeable
@@ -218,21 +227,29 @@ data class RegisterDeviceRequest(
 )
 
 @Serdeable
+enum class DeviceStatus {
+    ACTIVE,
+    INACTIVE,
+    BLOCKED
+}
+
+@Serdeable
 data class DeviceResponse(
     val id: UUID,
     val deviceId: String,
     val metadata: String? = null,
-    val status: String,
-    val registeredAt: String,
-    val lastUsedAt: String? = null
+    val status: DeviceStatus,
+    val registeredAt: java.time.Instant,
+    val lastUsedAt: java.time.Instant? = null
 )
 
 @Serdeable
-data class CreateInvitationRequest(
-    val email: String,
-    val organizationId: UUID,
-    val role: Role
-)
+enum class InvitationStatus {
+    PENDING,
+    ACCEPTED,
+    EXPIRED,
+    REVOKED
+}
 
 @Serdeable
 data class InvitationResponse(
@@ -240,8 +257,15 @@ data class InvitationResponse(
     val email: String,
     val organizationId: UUID,
     val role: Role,
-    val status: String,
-    val expiresAt: String
+    val status: InvitationStatus,
+    val expiresAt: java.time.Instant
+)
+
+@Serdeable
+data class CreateInvitationRequest(
+    val email: String,
+    val organizationId: UUID,
+    val role: Role
 )
 
 @Serdeable

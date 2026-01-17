@@ -1,5 +1,6 @@
 package ge.tiger8bit.spec
 
+import ge.tiger8bit.domain.AttachmentEntityType
 import ge.tiger8bit.dto.*
 import ge.tiger8bit.spec.common.BaseApiSpec
 import ge.tiger8bit.spec.common.TestData.Emails
@@ -71,7 +72,7 @@ class ScanFlowSpec : BaseApiSpec() {
                     "/api/scan/finish",
                     FinishScanRequest(
                         challenge = start.challenge,
-                        scannedAt = Instant.now().toString(),
+                        scannedAt = Instant.now(),
                         lat = BigDecimal("41.7151377"),
                         lon = BigDecimal("44.8270903")
                     )
@@ -124,7 +125,7 @@ class ScanFlowSpec : BaseApiSpec() {
 
             val finishRequest = FinishScanRequest(
                 challenge = start.challenge,
-                scannedAt = Instant.now().toString(),
+                scannedAt = Instant.now(),
                 lat = BigDecimal("41.7151377"),
                 lon = BigDecimal("44.8270903"),
                 checkStatus = CheckStatus.PROBLEMS_FOUND,
@@ -203,7 +204,7 @@ class ScanFlowSpec : BaseApiSpec() {
 
             val finishRequest = FinishScanRequest(
                 challenge = start.challenge,
-                scannedAt = Instant.now().toString(),
+                scannedAt = Instant.now(),
                 lat = BigDecimal("41.7151377"),
                 lon = BigDecimal("44.8270903"),
                 subCheckResults = listOf(
@@ -243,19 +244,19 @@ class ScanFlowSpec : BaseApiSpec() {
             savedSubEvents.size shouldBe 2
 
             val s1 = savedSubEvents.find { it.subCheckId == subCheck1Id }!!
-            s1.status shouldBe "ok"
+            s1.status shouldBe CheckStatus.OK
             s1.notes shouldBe "all good"
 
             val s2 = savedSubEvents.find { it.subCheckId == subCheck2Id }!!
-            s2.status shouldBe "problems_found"
+            s2.status shouldBe CheckStatus.PROBLEMS_FOUND
             s2.notes shouldBe "needs repair"
 
             // Verify attachments
-            val mainAttachments = fixtures.getAttachments("scan_event", finish.eventId)
+            val mainAttachments = fixtures.getAttachments(AttachmentEntityType.scan_event, finish.eventId)
             mainAttachments.size shouldBe 1
             mainAttachments[0].originalName shouldBe "parent.jpg"
 
-            val sub1Attachments = fixtures.getAttachments("sub_check_event", s1.id!!)
+            val sub1Attachments = fixtures.getAttachments(AttachmentEntityType.sub_check_event, s1.id!!)
             sub1Attachments.size shouldBe 2
             sub1Attachments[0].originalName shouldBe fileName1
             sub1Attachments[1].originalName shouldBe fileName2
@@ -298,13 +299,13 @@ class ScanFlowSpec : BaseApiSpec() {
                     "/api/scan/finish",
                     FinishScanRequest(
                         challenge = start.challenge,
-                        scannedAt = Instant.now().toString()
+                        scannedAt = Instant.now()
                     )
                 ).withAuth(workerToken),
                 FinishScanResponse::class.java
             )
 
-            val initialAttachments = fixtures.getAttachments("scan_event", finish.eventId)
+            val initialAttachments = fixtures.getAttachments(AttachmentEntityType.scan_event, finish.eventId)
             initialAttachments.shouldHaveSize(0)
 
             val body = MultipartBody.builder()
@@ -318,7 +319,7 @@ class ScanFlowSpec : BaseApiSpec() {
                     .withAuth(workerToken)
             )
 
-            val attachments = fixtures.getAttachments("scan_event", finish.eventId)
+            val attachments = fixtures.getAttachments(AttachmentEntityType.scan_event, finish.eventId)
             attachments.shouldHaveSize(2)
             attachments.map { it.originalName }.toSet() shouldBe setOf("scan1.jpg", "scan2.jpg")
         }
@@ -364,7 +365,7 @@ class ScanFlowSpec : BaseApiSpec() {
 
             val finishRequest = FinishScanRequest(
                 challenge = start.challenge,
-                scannedAt = Instant.now().toString()
+                scannedAt = Instant.now()
             )
 
             val body = MultipartBody.builder()
@@ -377,7 +378,7 @@ class ScanFlowSpec : BaseApiSpec() {
                 FinishScanResponse::class.java
             )
 
-            val attachments = fixtures.getAttachments("scan_event", finish.eventId)
+            val attachments = fixtures.getAttachments(AttachmentEntityType.scan_event, finish.eventId)
             attachments.shouldHaveSize(1)
             val photoId = attachments[0].id!!
 
@@ -385,7 +386,7 @@ class ScanFlowSpec : BaseApiSpec() {
                 HttpRequest.DELETE<Any>("/api/scan/events/${finish.eventId}/photos/$photoId").withAuth(workerToken)
             )
 
-            val remainingAttachments = fixtures.getAttachments("scan_event", finish.eventId)
+            val remainingAttachments = fixtures.getAttachments(AttachmentEntityType.scan_event, finish.eventId)
             remainingAttachments.shouldHaveSize(0)
         }
     }

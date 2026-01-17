@@ -1009,12 +1009,20 @@ components:
           type: string
           nullable: true
         status:
-          type: string
+          $ref: "#/components/schemas/DeviceStatus"
         registeredAt:
           type: string
+          format: date-time
         lastUsedAt:
           type: string
+          format: date-time
           nullable: true
+    DeviceStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - INACTIVE
+        - BLOCKED
     FinishScanRequest:
       required:
       - challenge
@@ -1025,6 +1033,7 @@ components:
           type: string
         scannedAt:
           type: string
+          format: date-time
         lat:
           type: number
           nullable: true
@@ -1192,9 +1201,17 @@ components:
         role:
           $ref: "#/components/schemas/Role"
         status:
-          type: string
+          $ref: "#/components/schemas/InvitationStatus"
         expiresAt:
           type: string
+          format: date-time
+    InvitationStatus:
+      type: string
+      enum:
+        - PENDING
+        - ACCEPTED
+        - EXPIRED
+        - REVOKED
     OrganizationResponse:
       required:
       - createdAt
@@ -1434,3 +1451,4 @@ components:
           type: string
         createdAt:
           type: string
+          format: date-time

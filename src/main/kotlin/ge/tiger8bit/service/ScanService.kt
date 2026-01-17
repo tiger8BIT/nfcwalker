@@ -10,7 +10,6 @@ import io.micronaut.http.exceptions.HttpStatusException
 import io.micronaut.http.multipart.CompletedFileUpload
 import jakarta.inject.Singleton
 import jakarta.transaction.Transactional
-import java.time.Instant
 import java.util.*
 
 @Singleton
@@ -91,11 +90,11 @@ open class ScanService(
                         patrolRunId = patrolRun.id!!,
                         checkpointId = checkpointId,
                         userId = userId,
-                        scannedAt = Instant.parse(request.scannedAt),
+                        scannedAt = request.scannedAt,
                         lat = request.lat,
                         lon = request.lon,
-                        verdict = ScanVerdict.OK.name.lowercase(),
-                        checkStatus = request.checkStatus?.name?.lowercase(),
+                        verdict = ScanVerdict.OK,
+                        checkStatus = request.checkStatus,
                         checkNotes = request.checkNotes
                     )
                 )
@@ -110,7 +109,7 @@ open class ScanService(
                         PatrolSubCheckEvent(
                             scanEventId = scanEvent.id!!,
                             subCheckId = subResult.subCheckId,
-                            status = subResult.status.name.lowercase(),
+                            status = subResult.status,
                             notes = subResult.notes
                         )
                     )
@@ -162,8 +161,8 @@ open class ScanService(
                     scanEventId = incident.scanEventId,
                     reportedBy = incident.reportedBy,
                     description = incident.description,
-                    severity = IncidentSeverity.valueOf(incident.severity),
-                    status = IncidentStatus.valueOf(incident.status),
+                    severity = incident.severity,
+                    status = incident.status,
                     createdAt = incident.createdAt,
                     updatedAt = incident.updatedAt
                 )
@@ -174,7 +173,7 @@ open class ScanService(
                 val partName = photo.name
 
                 // Determine entity for attachment: main event, sub-check event, or incident
-                var attachmentEntityType = "scan_event"
+                var attachmentEntityType = AttachmentEntityType.scan_event
                 var attachmentEntityId = eventId
 
                 // Check if photo is for an incident (incidentPhotos_{index})
@@ -184,7 +183,7 @@ open class ScanService(
                     try {
                         val incidentIndex = incidentIndexStr.toIntOrNull()
                         if (incidentIndex != null && incidentIndex < incidents.size) {
-                            attachmentEntityType = "incident"
+                            attachmentEntityType = AttachmentEntityType.incident
                             attachmentEntityId = incidents[incidentIndex].id
                             logger.debug("Mapped to incident: {}", attachmentEntityId)
                         }
@@ -197,7 +196,7 @@ open class ScanService(
                     try {
                         val subCheckId = UUID.fromString(subCheckIdStr)
                         subCheckEvents[subCheckId]?.let { subEvent ->
-                            attachmentEntityType = "sub_check_event"
+                            attachmentEntityType = AttachmentEntityType.sub_check_event
                             attachmentEntityId = subEvent.id!!
                             logger.debug("Mapped to sub-check event: {}", attachmentEntityId)
                         }
@@ -211,7 +210,7 @@ open class ScanService(
                     try {
                         val subCheckId = UUID.fromString(subCheckIdStr)
                         subCheckEvents[subCheckId]?.let { subEvent ->
-                            attachmentEntityType = "sub_check_event"
+                            attachmentEntityType = AttachmentEntityType.sub_check_event
                             attachmentEntityId = subEvent.id!!
                             logger.debug("Mapped to sub-check event: {}", attachmentEntityId)
                         }
@@ -221,7 +220,7 @@ open class ScanService(
                 }
 
                 val path = when (attachmentEntityType) {
-                    "incident" -> "incidents/$attachmentEntityId/${UUID.randomUUID()}_${photo.filename}"
+                    AttachmentEntityType.incident -> "incidents/$attachmentEntityId/${UUID.randomUUID()}_${photo.filename}"
                     else -> "scans/$eventId/${UUID.randomUUID()}_${photo.filename}"
                 }
                 val filePath = fms.uploadFile(photo, path)
@@ -298,7 +297,7 @@ open class ScanService(
                 val filePath = fms.uploadFile(photo, path)
                 attachmentRepository.save(
                     Attachment(
-                        entityType = "scan_event",
+                        entityType = AttachmentEntityType.scan_event,
                         entityId = scanEventId,
                         filePath = filePath,
                         originalName = photo.filename,
@@ -323,7 +322,7 @@ open class ScanService(
         val attachment = attachmentRepository.findById(photoId)
             .orElseThrow { HttpStatusException(HttpStatus.NOT_FOUND, "Photo not found") }
 
-        if (attachment.entityType != "scan_event" || attachment.entityId != scanEventId) {
+        if (attachment.entityType != AttachmentEntityType.scan_event || attachment.entityId != scanEventId) {
             throw HttpStatusException(HttpStatus.BAD_REQUEST, "Photo does not belong to this scan event")
         }
 
@@ -340,7 +339,7 @@ open class ScanService(
 
     private fun findActivePatrolRun(orgId: UUID): PatrolRun {
         val runs = patrolRunRepository.findAll()
-            .filter { it.organizationId == orgId && it.status in listOf("pending", "in_progress") }
+            .filter { it.organizationId == orgId && it.status in listOf(PatrolRunStatus.PENDING, PatrolRunStatus.IN_PROGRESS) }
 
         return runs.firstOrNull()
             ?: run {

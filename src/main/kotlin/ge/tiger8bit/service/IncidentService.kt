@@ -1,8 +1,12 @@
 package ge.tiger8bit.service
 
 import ge.tiger8bit.domain.Attachment
+import ge.tiger8bit.domain.AttachmentEntityType
 import ge.tiger8bit.domain.Incident
-import ge.tiger8bit.dto.*
+import ge.tiger8bit.dto.IncidentCreateRequest
+import ge.tiger8bit.dto.IncidentPatchRequest
+import ge.tiger8bit.dto.IncidentResponse
+import ge.tiger8bit.dto.IncidentStatus
 import ge.tiger8bit.getLogger
 import ge.tiger8bit.repository.AttachmentRepository
 import ge.tiger8bit.repository.IncidentRepository
@@ -36,7 +40,7 @@ open class IncidentService(
                 siteId = siteId,
                 reportedBy = userId,
                 description = request.description,
-                severity = request.severity.name,
+                severity = request.severity,
                 checkpointId = request.checkpointId,
                 scanEventId = request.scanEventId
             )
@@ -62,7 +66,7 @@ open class IncidentService(
                 siteId = siteId,
                 reportedBy = userId,
                 description = request.description,
-                severity = request.severity.name,
+                severity = request.severity,
                 checkpointId = checkpointId,
                 scanEventId = scanEventId
             )
@@ -77,8 +81,8 @@ open class IncidentService(
         accessService.ensureBossOrAppOwner(userId, incident.organizationId)
 
         request.description?.let { incident.description = it }
-        request.severity?.let { incident.severity = it.name }
-        request.status?.let { incident.status = it.name }
+        request.severity?.let { incident.severity = it }
+        request.status?.let { incident.status = it }
         incident.updatedAt = Instant.now()
 
         return toResponse(incidentRepository.update(incident))
@@ -102,7 +106,7 @@ open class IncidentService(
         }
 
         return incidents
-            .filter { status == null || it.status == status.name }
+            .filter { status == null || it.status == status }
             .sortedByDescending { it.createdAt }
             .map { toResponse(it) }
     }
@@ -138,7 +142,7 @@ open class IncidentService(
         accessService.ensureBossOrAppOwner(userId, incident.organizationId)
 
         // Delete all attachments
-        val attachments = attachmentRepository.findByEntityTypeAndEntityId("incident", incidentId)
+        val attachments = attachmentRepository.findByEntityTypeAndEntityId(AttachmentEntityType.incident, incidentId)
         fileManagementService.ifPresent { fms ->
             attachments.forEach { attachment ->
                 try {
@@ -174,7 +178,7 @@ open class IncidentService(
         val attachment = attachmentRepository.findById(photoId)
             .orElseThrow { HttpStatusException(HttpStatus.NOT_FOUND, "Photo not found") }
 
-        if (attachment.entityType != "incident" || attachment.entityId != incidentId) {
+        if (attachment.entityType != AttachmentEntityType.incident || attachment.entityId != incidentId) {
             throw HttpStatusException(HttpStatus.BAD_REQUEST, "Photo does not belong to this incident")
         }
 
@@ -197,7 +201,7 @@ open class IncidentService(
                 val filePath = fms.uploadFile(photo, path)
                 attachmentRepository.save(
                     Attachment(
-                        entityType = "incident",
+                        entityType = AttachmentEntityType.incident,
                         entityId = incidentId,
                         filePath = filePath,
                         originalName = photo.filename,
@@ -218,8 +222,8 @@ open class IncidentService(
             scanEventId = incident.scanEventId,
             reportedBy = incident.reportedBy,
             description = incident.description,
-            severity = IncidentSeverity.valueOf(incident.severity),
-            status = IncidentStatus.valueOf(incident.status),
+            severity = incident.severity,
+            status = incident.status,
             createdAt = incident.createdAt,
             updatedAt = incident.updatedAt
         )

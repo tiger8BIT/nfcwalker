@@ -95,7 +95,7 @@ class TestFixtures @Inject constructor(
     fun createPatrolRun(
         routeId: UUID,
         organizationId: UUID,
-        status: String = "in_progress"
+        status: ge.tiger8bit.dto.PatrolRunStatus = ge.tiger8bit.dto.PatrolRunStatus.IN_PROGRESS
     ): PatrolRun {
         val run = patrolRunRepository.save(
             PatrolRun(
@@ -175,7 +175,7 @@ class TestFixtures @Inject constructor(
         return patrolSubCheckEventRepository.findByScanEventId(scanEventId)
     }
 
-    fun getAttachments(entityType: String, entityId: UUID): List<Attachment> {
+    fun getAttachments(entityType: AttachmentEntityType, entityId: UUID): List<Attachment> {
         return attachmentRepository.findByEntityTypeAndEntityId(entityType, entityId)
     }
 }

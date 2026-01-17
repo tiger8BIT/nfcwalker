@@ -1,7 +1,11 @@
 package ge.tiger8bit.domain
 
+import ge.tiger8bit.dto.IncidentSeverity
+import ge.tiger8bit.dto.IncidentStatus
 import io.micronaut.serde.annotation.Serdeable
 import jakarta.persistence.*
+import org.hibernate.annotations.JdbcType
+import org.hibernate.dialect.PostgreSQLEnumJdbcType
 import java.time.Instant
 import java.util.*
 
@@ -37,11 +41,15 @@ class Incident(
     @Column(nullable = false, columnDefinition = "text")
     var description: String = "",
 
-    @Column(nullable = false, length = 50)
-    var severity: String = "MEDIUM",
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType::class)
+    @Column(nullable = false)
+    var severity: IncidentSeverity = IncidentSeverity.MEDIUM,
 
-    @Column(nullable = false, length = 50)
-    var status: String = "OPEN",
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType::class)
+    @Column(nullable = false)
+    var status: IncidentStatus = IncidentStatus.OPEN,
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
@@ -54,8 +62,8 @@ class Incident(
         siteId: UUID,
         reportedBy: UUID,
         description: String,
-        severity: String = "MEDIUM",
-        status: String = "OPEN",
+        severity: IncidentSeverity = IncidentSeverity.MEDIUM,
+        status: IncidentStatus = IncidentStatus.OPEN,
         checkpointId: UUID? = null,
         scanEventId: UUID? = null
     ) : this(

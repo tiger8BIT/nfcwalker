@@ -1,5 +1,6 @@
 package ge.tiger8bit.spec
 
+import ge.tiger8bit.domain.AttachmentEntityType
 import ge.tiger8bit.dto.*
 import ge.tiger8bit.spec.common.BaseApiSpec
 import ge.tiger8bit.spec.common.TestData.Emails
@@ -60,7 +61,7 @@ class IncidentFlowSpec : BaseApiSpec() {
                     "/api/scan/finish",
                     FinishScanRequest(
                         challenge = start.challenge,
-                        scannedAt = Instant.now().toString(),
+                        scannedAt = Instant.now(),
                         incidents = listOf(
                             IncidentCreateRequest(description = "Broken window", severity = IncidentSeverity.HIGH),
                             IncidentCreateRequest(description = "Graffiti", severity = IncidentSeverity.LOW)
@@ -114,7 +115,7 @@ class IncidentFlowSpec : BaseApiSpec() {
             response.status shouldBe IncidentStatus.OPEN
             response.id shouldNotBe null
 
-            val attachments = fixtures.getAttachments("incident", response.id)
+            val attachments = fixtures.getAttachments(AttachmentEntityType.incident, response.id)
             attachments.shouldHaveSize(1)
             attachments[0].originalName shouldBe "pipe.jpg"
         }
@@ -202,7 +203,7 @@ class IncidentFlowSpec : BaseApiSpec() {
                 IncidentResponse::class.java
             )
 
-            val initialAttachments = fixtures.getAttachments("incident", created.id)
+            val initialAttachments = fixtures.getAttachments(AttachmentEntityType.incident, created.id)
             initialAttachments.shouldHaveSize(0)
 
             val body = MultipartBody.builder()
@@ -216,7 +217,7 @@ class IncidentFlowSpec : BaseApiSpec() {
                     .withAuth(workerToken)
             )
 
-            val attachments = fixtures.getAttachments("incident", created.id)
+            val attachments = fixtures.getAttachments(AttachmentEntityType.incident, created.id)
             attachments.shouldHaveSize(2)
             attachments.map { it.originalName }.toSet() shouldBe setOf("photo1.jpg", "photo2.jpg")
         }
@@ -241,7 +242,7 @@ class IncidentFlowSpec : BaseApiSpec() {
                 IncidentResponse::class.java
             )
 
-            val attachments = fixtures.getAttachments("incident", created.id)
+            val attachments = fixtures.getAttachments(AttachmentEntityType.incident, created.id)
             attachments.shouldHaveSize(1)
             val photoId = attachments[0].id!!
 
@@ -249,7 +250,7 @@ class IncidentFlowSpec : BaseApiSpec() {
                 HttpRequest.DELETE<Any>("/api/incidents/${created.id}/photos/$photoId").withAuth(workerToken)
             )
 
-            val remainingAttachments = fixtures.getAttachments("incident", created.id)
+            val remainingAttachments = fixtures.getAttachments(AttachmentEntityType.incident, created.id)
             remainingAttachments.shouldHaveSize(0)
         }
 

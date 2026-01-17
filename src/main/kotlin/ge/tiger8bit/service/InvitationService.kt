@@ -2,6 +2,7 @@ package ge.tiger8bit.service
 
 import ge.tiger8bit.domain.Invitation
 import ge.tiger8bit.domain.Role
+import ge.tiger8bit.dto.InvitationStatus
 import ge.tiger8bit.getLogger
 import ge.tiger8bit.repository.InvitationRepository
 import ge.tiger8bit.repository.UserRepository
@@ -89,14 +90,14 @@ open class InvitationService(
             ?: return null
 
         // Check status and expiration
-        if (invitation.status != "pending") {
+        if (invitation.status != InvitationStatus.PENDING) {
             logger.warn("Invitation not pending: {}", token)
             return null
         }
 
         if (Instant.now().isAfter(invitation.expiresAt)) {
             logger.warn("Invitation expired: {}", token)
-            invitation.status = "expired"
+            invitation.status = InvitationStatus.EXPIRED
             invitationRepository.update(invitation)
             return null
         }
@@ -112,8 +113,8 @@ open class InvitationService(
         val invitationOpt = invitationRepository.findById(invitationId)
         if (invitationOpt.isPresent) {
             val invitation = invitationOpt.get()
-            if (invitation.status == "pending") {
-                invitation.status = "cancelled"
+            if (invitation.status == InvitationStatus.PENDING) {
+                invitation.status = InvitationStatus.REVOKED
                 invitationRepository.update(invitation)
                 logger.info("Invitation cancelled: {}", invitationId)
                 return true

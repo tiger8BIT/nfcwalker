@@ -1,7 +1,10 @@
 package ge.tiger8bit.domain
 
+import ge.tiger8bit.dto.CheckStatus
 import io.micronaut.serde.annotation.Serdeable
 import jakarta.persistence.*
+import org.hibernate.annotations.JdbcType
+import org.hibernate.dialect.PostgreSQLEnumJdbcType
 import java.time.Instant
 import java.util.*
 
@@ -19,8 +22,10 @@ class PatrolSubCheckEvent(
     @Column(name = "sub_check_id", nullable = false)
     var subCheckId: UUID = UUID(0, 0),
 
-    @Column(nullable = false, length = 50)
-    var status: String = "ok",
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType::class)
+    @Column(nullable = false)
+    var status: CheckStatus = CheckStatus.OK,
 
     @Column(columnDefinition = "text")
     var notes: String? = null,
@@ -31,7 +36,7 @@ class PatrolSubCheckEvent(
     constructor(
         scanEventId: UUID,
         subCheckId: UUID,
-        status: String = "ok",
+        status: CheckStatus = CheckStatus.OK,
         notes: String? = null
     ) : this(null, scanEventId, subCheckId, status, notes, Instant.now())
 }

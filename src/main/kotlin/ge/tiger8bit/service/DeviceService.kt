@@ -1,6 +1,7 @@
 package ge.tiger8bit.service
 
 import ge.tiger8bit.domain.Device
+import ge.tiger8bit.dto.DeviceStatus
 import ge.tiger8bit.getLogger
 import ge.tiger8bit.repository.DeviceRepository
 import jakarta.inject.Singleton
@@ -54,7 +55,7 @@ open class DeviceService(
         val device = deviceRepository.findById(deviceId)
         if (device.isPresent) {
             val dev = device.get()
-            dev.status = "revoked"
+            dev.status = DeviceStatus.BLOCKED
             deviceRepository.update(dev)
             logger.info("Device revoked: {}", deviceId)
             return true
@@ -64,7 +65,7 @@ open class DeviceService(
 
     fun getUserDevices(userId: UUID, organizationId: UUID): List<Device> {
         return deviceRepository.findByUserIdAndOrganizationId(userId, organizationId)
-            .filter { it.status == "active" }
+            .filter { it.status == DeviceStatus.ACTIVE }
     }
 
     fun getDeviceByIdInOrg(organizationId: UUID, deviceId: String): Device? {

@@ -55,7 +55,7 @@ class ReplaySpec : BaseApiSpec() {
                     "/api/scan/finish",
                     FinishScanRequest(
                         challenge = start.challenge,
-                        scannedAt = Instant.now().toString()
+                        scannedAt = Instant.now()
                     )
                 ).withAuth(workerToken),
                 FinishScanResponse::class.java
@@ -68,7 +68,7 @@ class ReplaySpec : BaseApiSpec() {
                         "/api/scan/finish",
                         FinishScanRequest(
                             challenge = start.challenge,
-                            scannedAt = Instant.now().toString()
+                            scannedAt = Instant.now()
                         )
                     ).withAuth(workerToken),
                     FinishScanResponse::class.java

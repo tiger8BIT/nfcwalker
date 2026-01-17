@@ -1,8 +1,11 @@
 package ge.tiger8bit.domain
 
+import ge.tiger8bit.dto.DeviceStatus
 import io.micronaut.serde.annotation.Serdeable
 import jakarta.persistence.*
+import org.hibernate.annotations.JdbcType
 import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.dialect.PostgreSQLEnumJdbcType
 import org.hibernate.type.SqlTypes
 import java.time.Instant
 import java.util.*
@@ -28,8 +31,10 @@ class Device(
     @Column(name = "metadata")
     var metadata: String? = null,
 
-    @Column(nullable = false, length = 50)
-    var status: String = "active",
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType::class)
+    @Column(nullable = false)
+    var status: DeviceStatus = DeviceStatus.ACTIVE,
 
     @Column(name = "registered_at", nullable = false)
     var registeredAt: Instant = Instant.now(),
@@ -51,7 +56,7 @@ class Device(
         organizationId,
         deviceId,
         metadata,
-        "active",
+        DeviceStatus.ACTIVE,
         Instant.now(),
         null,
         Instant.now()

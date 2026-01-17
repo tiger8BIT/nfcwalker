@@ -4,6 +4,7 @@ import ge.tiger8bit.domain.Role
 import ge.tiger8bit.dto.AcceptInvitationRequest
 import ge.tiger8bit.dto.CreateInvitationRequest
 import ge.tiger8bit.dto.InvitationResponse
+import ge.tiger8bit.dto.InvitationStatus
 import ge.tiger8bit.repository.InvitationRepository
 import ge.tiger8bit.repository.UserRoleRepository
 import ge.tiger8bit.spec.common.BaseApiSpec
@@ -53,7 +54,7 @@ class AcceptInvitationFlowSpec : BaseApiSpec() {
             response["status"] shouldBe "accepted"
             userRoleRepository.findByIdUserId(worker.id!!)
                 .any { it.role == Role.ROLE_WORKER && it.id.organizationId == org.id } shouldBe true
-            invitationRepository.findById(invite.id).orElseThrow().status shouldBe "accepted"
+            invitationRepository.findById(invite.id).orElseThrow().status shouldBe InvitationStatus.ACCEPTED
         }
     }
 }

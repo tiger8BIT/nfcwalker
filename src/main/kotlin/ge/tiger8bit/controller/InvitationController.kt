@@ -100,6 +100,6 @@ class InvitationController(
             organizationId = organizationId,
             role = role,
             status = status,
-            expiresAt = formatter.format(expiresAt)
+            expiresAt = expiresAt
         )
 }

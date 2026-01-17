@@ -2,6 +2,8 @@ package ge.tiger8bit.domain
 
 import io.micronaut.serde.annotation.Serdeable
 import jakarta.persistence.*
+import org.hibernate.annotations.JdbcType
+import org.hibernate.dialect.PostgreSQLEnumJdbcType
 import java.io.Serializable
 import java.time.Instant
 import java.util.*
@@ -33,7 +35,9 @@ class UserRole(
     @EmbeddedId
     var id: UserRoleId = UserRoleId(),
 
-    @Column(nullable = false, length = 50)
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType::class)
+    @Column(nullable = false)
     var role: Role = Role.ROLE_WORKER,
 
     @Column(name = "created_at", nullable = false)
