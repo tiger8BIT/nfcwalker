@@ -11,7 +11,6 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
-import io.micronaut.core.type.Argument
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.client.exceptions.HttpClientResponseException
@@ -43,12 +42,9 @@ class SiteSpec : BaseApiSpec() {
                 SiteResponse::class.java
             )
 
-            val sites = client.toBlocking().retrieve(
-                HttpRequest.GET<Any>("/api/sites?organizationId=${org.id}").withAuth(bossToken),
-                Argument.listOf(SiteResponse::class.java)
-            )
+            val page = getPage("/api/sites?organizationId=${org.id}&page=0&size=100", bossToken, SiteResponse::class.java)
 
-            sites.size shouldBeGreaterThan 0
+            page.content.size shouldBeGreaterThan 0
         }
 
         "BOSS can update a site" {

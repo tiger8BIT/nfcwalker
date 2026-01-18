@@ -138,6 +138,13 @@ abstract class BaseApiSpec : StringSpec(), TestPropertyProvider {
         return client.toBlocking().retrieve(request, listType)
     }
 
+    protected fun <T> getPage(url: String, token: String? = null, itemType: Class<T>): io.micronaut.data.model.Page<T> {
+        val request = HttpRequest.GET<io.micronaut.data.model.Page<T>>(url)
+        token?.let { request.bearerAuth(it) }
+        return client.toBlocking()
+            .retrieve(request, Argument.of(io.micronaut.data.model.Page::class.java, itemType)) as io.micronaut.data.model.Page<T>
+    }
+
     protected fun deleteJson(url: String, token: String? = null) {
         val request = HttpRequest.DELETE<Any>(url)
         token?.let { request.bearerAuth(it) }

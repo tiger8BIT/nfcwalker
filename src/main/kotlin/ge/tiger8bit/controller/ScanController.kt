@@ -47,8 +47,7 @@ class ScanController(
 
         val userId = UUID.fromString(principal.name)
 
-        return Flux.from(photos)
-            .collectList()
+        return (if (photos != null) Flux.from(photos).collectList() else Mono.just(emptyList()))
             .map { allPhotos ->
                 if (allPhotos.isEmpty()) {
                     scanService.finishScan(metadata, userId)
@@ -65,8 +64,7 @@ class ScanController(
         @Part("photos") photos: Publisher<CompletedFileUpload>? = null,
         principal: Principal
     ): Mono<HttpResponse<Any>> {
-        return Flux.from(photos)
-            .collectList()
+        return (if (photos != null) Flux.from(photos).collectList() else Mono.just(emptyList()))
             .map { allPhotos ->
                 val userId = UUID.fromString(principal.name)
                 scanService.addPhotosToScanEvent(eventId, allPhotos, userId)

@@ -73,14 +73,12 @@ class IncidentFlowSpec : BaseApiSpec() {
 
             finish.verdict shouldBe ScanVerdict.OK
 
-            val incidents = client.toBlocking().retrieve(
-                HttpRequest.GET<Any>("/api/incidents?organizationId=${org.id}").withAuth(bossToken),
-                Array<IncidentResponse>::class.java
-            )
+            val page = getPage("/api/incidents?organizationId=${org.id}", bossToken, IncidentResponse::class.java)
+            println("[DEBUG_LOG] Page content: ${page.content}")
 
-            incidents.shouldHaveSize(2)
-            incidents.any { it.description == "Broken window" && it.severity == IncidentSeverity.HIGH } shouldBe true
-            incidents.any { it.description == "Graffiti" && it.severity == IncidentSeverity.LOW } shouldBe true
+            page.content.shouldHaveSize(2)
+            page.content.any { it.description == "Broken window" && it.severity == IncidentSeverity.HIGH } shouldBe true
+            page.content.any { it.description == "Graffiti" && it.severity == IncidentSeverity.LOW } shouldBe true
         }
 
         "create standalone incident with photos" {
@@ -179,12 +177,9 @@ class IncidentFlowSpec : BaseApiSpec() {
                 HttpRequest.DELETE<Any>("/api/incidents/${created.id}").withAuth(bossToken)
             )
 
-            val incidents = client.toBlocking().retrieve(
-                HttpRequest.GET<Any>("/api/incidents?organizationId=${org.id}").withAuth(bossToken),
-                Array<IncidentResponse>::class.java
-            )
+            val page = getPage("/api/incidents?organizationId=${org.id}", bossToken, IncidentResponse::class.java)
 
-            incidents.none { it.id == created.id } shouldBe true
+            page.content.none { it.id == created.id } shouldBe true
         }
 
         "add photos to existing incident" {

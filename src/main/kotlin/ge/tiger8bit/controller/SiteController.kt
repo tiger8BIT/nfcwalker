@@ -4,6 +4,8 @@ import ge.tiger8bit.dto.CreateSiteRequest
 import ge.tiger8bit.dto.SiteResponse
 import ge.tiger8bit.dto.UpdateSiteRequest
 import ge.tiger8bit.service.SiteService
+import io.micronaut.data.model.Page
+import io.micronaut.data.model.Pageable
 import io.micronaut.http.annotation.*
 import io.micronaut.security.annotation.Secured
 import java.security.Principal
@@ -21,9 +23,15 @@ class SiteController(
     }
 
     @Get
-    fun listSites(@QueryValue organizationId: UUID, principal: Principal): List<SiteResponse> {
+    fun listSites(
+        @QueryValue organizationId: UUID,
+        @QueryValue(defaultValue = "0") page: Int,
+        @QueryValue(defaultValue = "20") size: Int,
+        principal: Principal
+    ): Page<SiteResponse> {
         val userId = UUID.fromString(principal.name)
-        return siteService.findByOrganizationId(organizationId, userId)
+        val pageable = Pageable.from(page, size)
+        return siteService.findByOrganizationId(organizationId, userId, pageable)
     }
 
     @Get("/{id}")

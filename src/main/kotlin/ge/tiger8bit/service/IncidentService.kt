@@ -96,19 +96,16 @@ open class IncidentService(
         return toResponse(incident)
     }
 
-    open fun listIncidents(organizationId: UUID, siteId: UUID?, status: IncidentStatus?, userId: UUID): List<IncidentResponse> {
+    open fun listIncidents(
+        organizationId: UUID,
+        siteId: UUID?,
+        status: IncidentStatus?,
+        userId: UUID,
+        pageable: io.micronaut.data.model.Pageable
+    ): io.micronaut.data.model.Page<IncidentResponse> {
         accessService.ensureAnyRoleInOrg(userId, organizationId)
-
-        val incidents = if (siteId != null) {
-            incidentRepository.findBySiteId(siteId)
-        } else {
-            incidentRepository.findByOrganizationId(organizationId)
-        }
-
-        return incidents
-            .filter { status == null || it.status == status }
-            .sortedByDescending { it.createdAt }
-            .map { toResponse(it) }
+        val page = incidentRepository.findPaginated(organizationId, siteId, status?.name, pageable)
+        return page.map { toResponse(it) }
     }
 
     @Transactional

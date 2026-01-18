@@ -6,6 +6,8 @@ import ge.tiger8bit.dto.OrganizationResponse
 import ge.tiger8bit.dto.UpdateOrganizationRequest
 import ge.tiger8bit.getLogger
 import ge.tiger8bit.repository.OrganizationRepository
+import io.micronaut.data.model.Page
+import io.micronaut.data.model.Pageable
 import jakarta.inject.Singleton
 import jakarta.transaction.Transactional
 import java.util.*
@@ -28,11 +30,11 @@ open class OrganizationService(
         return organization.toResponse()
     }
 
-    fun findAll(): List<OrganizationResponse> {
-        logger.info("Listing all organizations")
-        val organizations = organizationRepository.findAll()
-        logger.info("Found {} organizations", organizations.size)
-        return organizations.map { it.toResponse() }
+    fun findAll(pageable: Pageable): Page<OrganizationResponse> {
+        logger.info("Listing organizations page={}, size={}", pageable.number, pageable.size)
+        val pageOrgs = organizationRepository.findAll(pageable)
+        logger.info("Found {} total organizations", pageOrgs.totalSize)
+        return Page.of(pageOrgs.content.map { it.toResponse() }, pageOrgs.pageable, pageOrgs.totalSize)
     }
 
     fun findById(id: UUID): OrganizationResponse? {

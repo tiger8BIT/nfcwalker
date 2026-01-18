@@ -5,6 +5,8 @@ import ge.tiger8bit.dto.RegisterDeviceRequest
 import ge.tiger8bit.getLogger
 import ge.tiger8bit.service.AccessService
 import ge.tiger8bit.service.DeviceService
+import io.micronaut.data.model.Page
+import io.micronaut.data.model.Pageable
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.annotation.*
 import io.micronaut.security.annotation.Secured
@@ -32,33 +34,43 @@ class DeviceController(
         val userId = UUID.fromString(principal.name)
         accessService.ensureWorkerOrBoss(userId, organizationId)
 
-        return try {
-            val device = deviceService.registerDevice(
-                userId = userId,
-                organizationId = organizationId,
-                deviceId = request.deviceId,
-                metadata = request.metadata
-            )
-            HttpResponse.created(device.toResponse())
-        } catch (e: IllegalArgumentException) {
-            logger.warn("Failed to register device: {}", e.message)
-            HttpResponse.badRequest()
-        }
+        val device = deviceService.registerDevice(
+            userId = userId,
+            organizationId = organizationId,
+            deviceId = request.deviceId,
+            metadata = request.metadata
+        )
+        return HttpResponse.created(device.toResponse())
     }
 
     @Get
     @Secured("ROLE_WORKER")
     fun getUserDevices(
         @QueryValue organizationId: UUID,
+        @QueryValue(defaultValue = "0") page: Int,
+        @QueryValue(defaultValue = "20") size: Int,
         principal: Principal
-    ): HttpResponse<List<DeviceResponse>> {
-        logger.info("GET /api/devices - org: {}", organizationId)
+    ): HttpResponse<Page<DeviceResponse>> {
+        logger.info("GET /api/devices - org: {}, page: {}, size: {}", organizationId, page, size)
 
         val userId = UUID.fromString(principal.name)
         accessService.ensureWorkerOrBoss(userId, organizationId)
 
-        val devices = deviceService.getUserDevices(userId, organizationId)
+        val pageable = Pageable.from(page, size)
+        val devices = deviceService.getUserDevices(userId, organizationId, pageable)
         return HttpResponse.ok(devices.map { it.toResponse() })
+    }
+
+    @Get("/{id}")
+    @Secured("ROLE_WORKER")
+    fun getDevice(@PathVariable id: UUID, principal: Principal): HttpResponse<DeviceResponse> {
+        val userId = UUID.fromString(principal.name)
+        val device = deviceService.getDeviceEntity(id) ?: return HttpResponse.notFound()
+        accessService.ensureWorkerOrBoss(userId, device.organizationId)
+        if (device.userId != userId) {
+            return HttpResponse.status(io.micronaut.http.HttpStatus.FORBIDDEN)
+        }
+        return HttpResponse.ok(device.toResponse())
     }
 
     @Delete("/{id}")

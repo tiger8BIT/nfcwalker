@@ -8,6 +8,8 @@ import ge.tiger8bit.spec.common.BaseApiSpec
 import ge.tiger8bit.spec.common.TestData.Emails
 import ge.tiger8bit.spec.common.withAuth
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.collections.shouldNotBeEmpty
+import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.micronaut.http.HttpRequest
@@ -116,13 +118,11 @@ class CheckpointSpec : BaseApiSpec() {
                     CheckpointResponse::class.java
                 )
 
-            val list = client.toBlocking().retrieve(
-                HttpRequest.GET<Any>("/api/admin/checkpoints?siteId=${site.id}").withAuth(bossToken),
-                Array<CheckpointResponse>::class.java
-            ).toList()
+            val page = getPage("/api/admin/checkpoints?siteId=${site.id}&page=0&size=100", bossToken, CheckpointResponse::class.java)
 
-            list.isNotEmpty() shouldBe true
-            list.any { it.code == request.code } shouldBe true
+            page.content.shouldNotBeEmpty()
+            page.content.any { it.code == request.code } shouldBe true
+            page.totalSize.toInt() shouldBeGreaterThan 0
         }
 
         "WORKER cannot create checkpoint (forbidden)" {

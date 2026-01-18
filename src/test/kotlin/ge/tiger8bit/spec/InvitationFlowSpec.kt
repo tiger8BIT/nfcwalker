@@ -10,7 +10,6 @@ import ge.tiger8bit.spec.common.TestData.Emails
 import ge.tiger8bit.spec.common.TestData.Orgs
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import io.micronaut.core.type.Argument
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.client.exceptions.HttpClientResponseException
@@ -112,12 +111,10 @@ class InvitationFlowSpec : BaseApiSpec() {
                 InvitationResponse::class.java
             )
 
-            val request = HttpRequest.GET<List<InvitationResponse>>("/api/invitations?organizationId=${org.id}")
-                .bearerAuth(bossToken)
-            val responses = client.toBlocking().retrieve(request, Argument.listOf(InvitationResponse::class.java))
+            val page = getPage("/api/invitations?organizationId=${org.id}", bossToken, InvitationResponse::class.java)
 
-            responses.size shouldBe 2
-            responses.map { it.email } shouldBe listOf(worker1Email, worker2Email)
+            page.totalSize shouldBe 2
+            page.content.map { it.email } shouldBe listOf(worker1Email, worker2Email)
         }
 
         "CANCEL pending invitation" {

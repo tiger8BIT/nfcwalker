@@ -323,6 +323,9 @@ data class IncidentResponse(
 )
 
 @Serdeable
+data class UpdateRouteRequest(val name: String? = null)
+
+@Serdeable
 data class IncidentPatchRequest(
     val description: String? = null,
     val severity: IncidentSeverity? = null,

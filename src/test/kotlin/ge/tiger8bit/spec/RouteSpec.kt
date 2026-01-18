@@ -8,9 +8,7 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.micronaut.http.HttpRequest
 import io.micronaut.http.HttpStatus
-import io.micronaut.http.client.exceptions.HttpClientResponseException
 import io.micronaut.test.extensions.kotest5.annotation.MicronautTest
-import org.junit.jupiter.api.assertThrows
 
 @MicronautTest(transactional = false)
 class RouteSpec : BaseApiSpec() {
@@ -47,19 +45,45 @@ class RouteSpec : BaseApiSpec() {
             addResponse["status"] shouldBe "updated"
         }
 
-        "WORKER cannot create route (forbidden)" {
+        "BOSS can list routes" {
+            val (org, site) = fixtures.seedOrgAndSite()
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
+
+            fixtures.createRoute(org.id!!, site.id!!, "Route 1")
+            fixtures.createRoute(org.id!!, site.id!!, "Route 2")
+
+            val page = getPage("/api/admin/routes?orgId=${org.id}&page=0&size=100", bossToken, RouteResponse::class.java)
+
+            page.content.size shouldBe 2
+        }
+
+        "WORKER can list routes via user API" {
             val (org, site) = fixtures.seedOrgAndSite()
             val (workerToken, _) = specHelpers.createWorkerToken(org.id!!, email = Emails.unique("worker"))
 
-            val exception = assertThrows<HttpClientResponseException> {
-                client.toBlocking().retrieve(
-                    HttpRequest.POST("/api/admin/routes", CreateRouteRequest(org.id!!, site.id!!, "Unauthorized Route"))
-                        .withAuth(workerToken),
-                    RouteResponse::class.java
-                )
-            }
+            fixtures.createRoute(org.id!!, site.id!!, "Worker Route")
 
-            exception.status shouldBe HttpStatus.FORBIDDEN
+            val page = getPage("/api/routes?orgId=${org.id}", workerToken, RouteResponse::class.java)
+
+            page.content.any { it.name == "Worker Route" } shouldBe true
+        }
+
+        "BOSS can update and delete route" {
+            val (org, site) = fixtures.seedOrgAndSite()
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
+            val route = fixtures.createRoute(org.id!!, site.id!!)
+
+            val updated = client.toBlocking().retrieve(
+                HttpRequest.PUT("/api/admin/routes/${route.id}", UpdateRouteRequest(name = "Updated Name")).withAuth(bossToken),
+                RouteResponse::class.java
+            )
+            updated.name shouldBe "Updated Name"
+
+            val deleteResponse = client.toBlocking().exchange(
+                HttpRequest.DELETE<Any>("/api/admin/routes/${route.id}").withAuth(bossToken),
+                Map::class.java
+            )
+            deleteResponse.status shouldBe HttpStatus.OK
         }
     }
 }

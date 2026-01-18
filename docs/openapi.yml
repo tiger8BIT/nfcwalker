@@ -9,20 +9,41 @@ paths:
       parameters:
       - name: siteId
         in: query
-        required: true
         explode: false
         schema:
           type: string
           format: uuid
+          nullable: true
+      - name: orgId
+        in: query
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          nullable: true
+      - name: page
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
       responses:
         "200":
           description: listCheckpoints 200 response
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/CheckpointResponse"
+                $ref: "#/components/schemas/Page_CheckpointResponse_"
     post:
       operationId: createCheckpoint
       requestBody:
@@ -39,6 +60,22 @@ paths:
               schema:
                 $ref: "#/components/schemas/CheckpointResponse"
   /api/admin/checkpoints/{id}:
+    get:
+      operationId: getCheckpoint
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: getCheckpoint 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckpointResponse"
     put:
       operationId: updateCheckpoint
       parameters:
@@ -79,23 +116,47 @@ paths:
                 type: object
                 additionalProperties:
                   type: string
-  /api/admin/organizations:
-    post:
-      operationId: createOrganization
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateOrganizationRequest"
+  /api/admin/routes:
+    get:
+      operationId: listRoutes
+      parameters:
+      - name: orgId
+        in: query
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          nullable: true
+      - name: siteId
+        in: query
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          nullable: true
+      - name: page
+        in: query
         required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
       responses:
         "200":
-          description: createOrganization 200 response
+          description: listRoutes 200 response
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OrganizationResponse"
-  /api/admin/routes:
+                $ref: "#/components/schemas/Page_RouteResponse_"
     post:
       operationId: createRoute
       requestBody:
@@ -112,6 +173,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/RouteResponse"
   /api/admin/routes/{id}:
+    get:
+      operationId: getRoute
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: getRoute 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RouteResponse"
+    put:
+      operationId: updateRoute
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRouteRequest"
+        required: true
+      responses:
+        "200":
+          description: updateRoute 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RouteResponse"
     delete:
       operationId: deleteRoute
       parameters:
@@ -166,15 +265,29 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: page
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
       responses:
         "200":
           description: getUserDevices 200 response
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/DeviceResponse"
+                $ref: "#/components/schemas/Page_DeviceResponse_"
     post:
       operationId: registerDevice
       parameters:
@@ -199,6 +312,22 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeviceResponse"
   /api/devices/{id}:
+    get:
+      operationId: getDevice
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: getDevice 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceResponse"
     delete:
       operationId: revokeDevice
       parameters:
@@ -242,15 +371,29 @@ paths:
           nullable: true
           allOf:
           - $ref: "#/components/schemas/IncidentStatus"
+      - name: page
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
       responses:
         "200":
           description: listIncidents 200 response
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/IncidentResponse"
+                $ref: "#/components/schemas/Page_IncidentResponse_"
     post:
       operationId: createIncident
       requestBody:
@@ -422,15 +565,29 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: page
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
       responses:
         "200":
           description: getInvitations 200 response
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/InvitationResponse"
+                $ref: "#/components/schemas/Page_InvitationResponse_"
     post:
       operationId: createInvitation
       requestBody:
@@ -447,6 +604,22 @@ paths:
               schema:
                 $ref: "#/components/schemas/InvitationResponse"
   /api/invitations/{id}:
+    get:
+      operationId: getInvitation
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: getInvitation 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationResponse"
     delete:
       operationId: cancelInvitation
       parameters:
@@ -468,17 +641,32 @@ paths:
   /api/organizations:
     get:
       operationId: listOrganizations
+      parameters:
+      - name: page
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
       responses:
         "200":
           description: listOrganizations 200 response
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/OrganizationResponse"
+                $ref: "#/components/schemas/Page_OrganizationResponse_"
     post:
-      operationId: createOrganization_1
+      operationId: createOrganization
       requestBody:
         content:
           application/json:
@@ -487,7 +675,7 @@ paths:
         required: true
       responses:
         "200":
-          description: createOrganization_1 200 response
+          description: createOrganization 200 response
           content:
             application/json:
               schema:
@@ -549,6 +737,64 @@ paths:
                 type: object
                 additionalProperties:
                   type: object
+  /api/routes:
+    get:
+      operationId: listRoutes_1
+      parameters:
+      - name: orgId
+        in: query
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          nullable: true
+      - name: siteId
+        in: query
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          nullable: true
+      - name: page
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        "200":
+          description: listRoutes_1 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Page_RouteResponse_"
+  /api/routes/{id}:
+    get:
+      operationId: getRoute_1
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: getRoute_1 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RouteResponse"
   /api/scan/events/{eventId}/photos:
     post:
       operationId: addPhotosToScanEvent
@@ -667,15 +913,29 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: page
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
       responses:
         "200":
           description: listSites 200 response
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SiteResponse"
+                $ref: "#/components/schemas/Page_SiteResponse_"
     post:
       operationId: createSite
       requestBody:
@@ -1020,9 +1280,9 @@ components:
     DeviceStatus:
       type: string
       enum:
-        - ACTIVE
-        - INACTIVE
-        - BLOCKED
+      - ACTIVE
+      - INACTIVE
+      - BLOCKED
     FinishScanRequest:
       required:
       - challenge
@@ -1208,10 +1468,10 @@ components:
     InvitationStatus:
       type: string
       enum:
-        - PENDING
-        - ACCEPTED
-        - EXPIRED
-        - REVOKED
+      - PENDING
+      - ACCEPTED
+      - EXPIRED
+      - REVOKED
     OrganizationResponse:
       required:
       - createdAt
@@ -1227,6 +1487,138 @@ components:
         createdAt:
           type: string
           format: date-time
+    Page_CheckpointResponse_:
+      required:
+      - totalPages
+      - totalSize
+      type: object
+      allOf:
+      - $ref: "#/components/schemas/Slice_CheckpointResponse_"
+      - type: object
+        properties:
+          totalSize:
+            type: integer
+            format: int64
+          totalPages:
+            type: integer
+            format: int32
+    Page_DeviceResponse_:
+      required:
+      - totalPages
+      - totalSize
+      type: object
+      allOf:
+      - $ref: "#/components/schemas/Slice_DeviceResponse_"
+      - type: object
+        properties:
+          totalSize:
+            type: integer
+            format: int64
+          totalPages:
+            type: integer
+            format: int32
+    Page_IncidentResponse_:
+      required:
+      - totalPages
+      - totalSize
+      type: object
+      allOf:
+      - $ref: "#/components/schemas/Slice_IncidentResponse_"
+      - type: object
+        properties:
+          totalSize:
+            type: integer
+            format: int64
+          totalPages:
+            type: integer
+            format: int32
+    Page_InvitationResponse_:
+      required:
+      - totalPages
+      - totalSize
+      type: object
+      allOf:
+      - $ref: "#/components/schemas/Slice_InvitationResponse_"
+      - type: object
+        properties:
+          totalSize:
+            type: integer
+            format: int64
+          totalPages:
+            type: integer
+            format: int32
+    Page_OrganizationResponse_:
+      required:
+      - totalPages
+      - totalSize
+      type: object
+      allOf:
+      - $ref: "#/components/schemas/Slice_OrganizationResponse_"
+      - type: object
+        properties:
+          totalSize:
+            type: integer
+            format: int64
+          totalPages:
+            type: integer
+            format: int32
+    Page_RouteResponse_:
+      required:
+      - totalPages
+      - totalSize
+      type: object
+      allOf:
+      - $ref: "#/components/schemas/Slice_RouteResponse_"
+      - type: object
+        properties:
+          totalSize:
+            type: integer
+            format: int64
+          totalPages:
+            type: integer
+            format: int32
+    Page_SiteResponse_:
+      required:
+      - totalPages
+      - totalSize
+      type: object
+      allOf:
+      - $ref: "#/components/schemas/Slice_SiteResponse_"
+      - type: object
+        properties:
+          totalSize:
+            type: integer
+            format: int64
+          totalPages:
+            type: integer
+            format: int32
+    Pageable:
+      required:
+      - mode
+      - number
+      - size
+      - sort
+      type: object
+      allOf:
+      - $ref: "#/components/schemas/Sort"
+      - type: object
+        properties:
+          number:
+            type: integer
+            format: int32
+          size:
+            type: integer
+            format: int32
+          mode:
+            $ref: "#/components/schemas/Pageable.Mode"
+          sort:
+            $ref: "#/components/schemas/Sort"
+    Pageable.Mode:
+      type: string
+      enum:
+      - CURSOR_NEXT
+      - CURSOR_PREVIOUS
+      - OFFSET
     RegisterDeviceRequest:
       required:
       - deviceId
@@ -1310,6 +1702,253 @@ components:
         createdAt:
           type: string
           format: date-time
+    Slice_CheckpointResponse_:
+      required:
+      - content
+      - empty
+      - numberOfElements
+      - offset
+      - pageNumber
+      - pageable
+      - size
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/CheckpointResponse"
+        pageable:
+          $ref: "#/components/schemas/Pageable"
+        pageNumber:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int64
+        size:
+          type: integer
+          format: int32
+        empty:
+          type: boolean
+        numberOfElements:
+          type: integer
+          format: int32
+    Slice_DeviceResponse_:
+      required:
+      - content
+      - empty
+      - numberOfElements
+      - offset
+      - pageNumber
+      - pageable
+      - size
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceResponse"
+        pageable:
+          $ref: "#/components/schemas/Pageable"
+        pageNumber:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int64
+        size:
+          type: integer
+          format: int32
+        empty:
+          type: boolean
+        numberOfElements:
+          type: integer
+          format: int32
+    Slice_IncidentResponse_:
+      required:
+      - content
+      - empty
+      - numberOfElements
+      - offset
+      - pageNumber
+      - pageable
+      - size
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/IncidentResponse"
+        pageable:
+          $ref: "#/components/schemas/Pageable"
+        pageNumber:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int64
+        size:
+          type: integer
+          format: int32
+        empty:
+          type: boolean
+        numberOfElements:
+          type: integer
+          format: int32
+    Slice_InvitationResponse_:
+      required:
+      - content
+      - empty
+      - numberOfElements
+      - offset
+      - pageNumber
+      - pageable
+      - size
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvitationResponse"
+        pageable:
+          $ref: "#/components/schemas/Pageable"
+        pageNumber:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int64
+        size:
+          type: integer
+          format: int32
+        empty:
+          type: boolean
+        numberOfElements:
+          type: integer
+          format: int32
+    Slice_OrganizationResponse_:
+      required:
+      - content
+      - empty
+      - numberOfElements
+      - offset
+      - pageNumber
+      - pageable
+      - size
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrganizationResponse"
+        pageable:
+          $ref: "#/components/schemas/Pageable"
+        pageNumber:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int64
+        size:
+          type: integer
+          format: int32
+        empty:
+          type: boolean
+        numberOfElements:
+          type: integer
+          format: int32
+    Slice_RouteResponse_:
+      required:
+      - content
+      - empty
+      - numberOfElements
+      - offset
+      - pageNumber
+      - pageable
+      - size
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/RouteResponse"
+        pageable:
+          $ref: "#/components/schemas/Pageable"
+        pageNumber:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int64
+        size:
+          type: integer
+          format: int32
+        empty:
+          type: boolean
+        numberOfElements:
+          type: integer
+          format: int32
+    Slice_SiteResponse_:
+      required:
+      - content
+      - empty
+      - numberOfElements
+      - offset
+      - pageNumber
+      - pageable
+      - size
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/SiteResponse"
+        pageable:
+          $ref: "#/components/schemas/Pageable"
+        pageNumber:
+          type: integer
+          format: int32
+        offset:
+          type: integer
+          format: int64
+        size:
+          type: integer
+          format: int32
+        empty:
+          type: boolean
+        numberOfElements:
+          type: integer
+          format: int32
+    Sort:
+      required:
+      - orderBy
+      type: object
+      properties:
+        orderBy:
+          type: array
+          items:
+            $ref: "#/components/schemas/Sort.Order"
+    Sort.Order:
+      required:
+      - ascending
+      - direction
+      - ignoreCase
+      - property
+      type: object
+      properties:
+        ignoreCase:
+          type: boolean
+        direction:
+          $ref: "#/components/schemas/Sort.Order.Direction"
+        property:
+          type: string
+        ascending:
+          type: boolean
+    Sort.Order.Direction:
+      type: string
+      enum:
+      - ASC
+      - DESC
     StartScanRequest:
       required:
       - checkpointCode
@@ -1427,6 +2066,12 @@ components:
       properties:
         name:
           type: string
+    UpdateRouteRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
     UpdateSiteRequest:
       required:
       - name

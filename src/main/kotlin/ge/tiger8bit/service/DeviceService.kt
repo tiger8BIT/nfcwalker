@@ -4,6 +4,8 @@ import ge.tiger8bit.domain.Device
 import ge.tiger8bit.dto.DeviceStatus
 import ge.tiger8bit.getLogger
 import ge.tiger8bit.repository.DeviceRepository
+import io.micronaut.data.model.Page
+import io.micronaut.data.model.Pageable
 import jakarta.inject.Singleton
 import jakarta.transaction.Transactional
 import java.time.Instant
@@ -63,9 +65,8 @@ open class DeviceService(
         return false
     }
 
-    fun getUserDevices(userId: UUID, organizationId: UUID): List<Device> {
-        return deviceRepository.findByUserIdAndOrganizationId(userId, organizationId)
-            .filter { it.status == DeviceStatus.ACTIVE }
+    fun getUserDevices(userId: UUID, organizationId: UUID, pageable: Pageable): Page<Device> {
+        return deviceRepository.findByUserIdAndOrganizationId(userId, organizationId, pageable)
     }
 
     fun getDeviceByIdInOrg(organizationId: UUID, deviceId: String): Device? {

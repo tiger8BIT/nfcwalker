@@ -6,6 +6,8 @@ import ge.tiger8bit.dto.SiteResponse
 import ge.tiger8bit.dto.UpdateSiteRequest
 import ge.tiger8bit.getLogger
 import ge.tiger8bit.repository.SiteRepository
+import io.micronaut.data.model.Page
+import io.micronaut.data.model.Pageable
 import jakarta.inject.Singleton
 import jakarta.transaction.Transactional
 import java.util.*
@@ -34,15 +36,14 @@ open class SiteService(
         return site.toResponse()
     }
 
-    fun findByOrganizationId(organizationId: UUID, userId: UUID): List<SiteResponse> {
+    fun findByOrganizationId(organizationId: UUID, userId: UUID, pageable: Pageable): Page<SiteResponse> {
         accessService.ensureBossOrAppOwner(userId, organizationId)
 
-        logger.info("Listing sites for organization: {}", organizationId)
+        logger.info("Listing sites for organization: {} page={}, size={}", organizationId, pageable.number, pageable.size)
+        val pageSites = siteRepository.findByOrganizationIdPaginated(organizationId, pageable)
+        logger.info("Found {} total sites in organization: {}", pageSites.totalSize, organizationId)
 
-        val sites = siteRepository.findByOrganizationId(organizationId)
-        logger.info("Found {} sites in organization: {}", sites.size, organizationId)
-
-        return sites.map { it.toResponse() }
+        return Page.of(pageSites.content.map { it.toResponse() }, pageSites.pageable, pageSites.totalSize)
     }
 
     fun findById(id: UUID, userId: UUID): SiteResponse? {

@@ -1,13 +1,17 @@
 package ge.tiger8bit.controller
 
-import ge.tiger8bit.dto.*
+import ge.tiger8bit.dto.CreateOrganizationRequest
+import ge.tiger8bit.dto.OrganizationResponse
+import ge.tiger8bit.dto.UpdateOrganizationRequest
 import ge.tiger8bit.service.OrganizationService
+import io.micronaut.data.model.Page
+import io.micronaut.data.model.Pageable
 import io.micronaut.http.annotation.*
 import io.micronaut.security.annotation.Secured
-import java.util.UUID
+import java.util.*
 
 @Controller("/api/organizations")
-@Secured("ROLE_APP_OWNER")
+@Secured("ROLE_BOSS", "ROLE_APP_OWNER")
 class OrganizationController(
     private val organizationService: OrganizationService
 ) {
@@ -17,8 +21,12 @@ class OrganizationController(
     }
 
     @Get
-    fun listOrganizations(): List<OrganizationResponse> {
-        return organizationService.findAll()
+    fun listOrganizations(
+        @QueryValue(defaultValue = "0") page: Int,
+        @QueryValue(defaultValue = "20") size: Int
+    ): Page<OrganizationResponse> {
+        val pageable = Pageable.from(page, size)
+        return organizationService.findAll(pageable)
     }
 
     @Get("/{id}")

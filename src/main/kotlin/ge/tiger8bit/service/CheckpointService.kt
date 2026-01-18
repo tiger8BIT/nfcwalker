@@ -10,6 +10,8 @@ import ge.tiger8bit.getLogger
 import ge.tiger8bit.repository.CheckpointRepository
 import ge.tiger8bit.repository.CheckpointSubCheckRepository
 import ge.tiger8bit.repository.PatrolRouteCheckpointRepository
+import io.micronaut.data.model.Page
+import io.micronaut.data.model.Pageable
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.exceptions.HttpStatusException
 import jakarta.inject.Singleton
@@ -99,15 +101,26 @@ open class CheckpointService(
         return checkpoint.toResponse(savedSubChecks)
     }
 
-    fun findBySiteId(siteId: UUID, userId: UUID): List<CheckpointResponse> {
-        val checkpoints = checkpointRepository.findBySiteId(siteId)
-        if (checkpoints.isNotEmpty()) {
-            accessService.ensureBossOrAppOwner(userId, checkpoints.first().organizationId)
+    fun findBySiteId(siteId: UUID, pageable: Pageable, userId: UUID): Page<CheckpointResponse> {
+        val cpPage = checkpointRepository.findBySiteIdPaginated(siteId, pageable)
+        if (cpPage.content.isNotEmpty()) {
+            accessService.ensureBossOrAppOwner(userId, cpPage.content.first().organizationId)
         }
-        return checkpoints.map { cp ->
+        val content = cpPage.content.map { cp ->
             val subChecks = checkpointSubCheckRepository.findByCheckpointId(cp.id!!)
             cp.toResponse(subChecks)
         }
+        return Page.of(content, cpPage.pageable, cpPage.totalSize)
+    }
+
+    fun findByOrganizationId(orgId: UUID, pageable: Pageable, userId: UUID): Page<CheckpointResponse> {
+        accessService.ensureBossOrAppOwner(userId, orgId)
+        val cpPage = checkpointRepository.findByOrganizationIdPaginated(orgId, pageable)
+        val content = cpPage.content.map { cp ->
+            val subChecks = checkpointSubCheckRepository.findByCheckpointId(cp.id!!)
+            cp.toResponse(subChecks)
+        }
+        return Page.of(content, cpPage.pageable, cpPage.totalSize)
     }
 
     fun findById(id: UUID): Checkpoint? {
@@ -116,6 +129,10 @@ open class CheckpointService(
 
     fun findByCode(code: String): Checkpoint? {
         return checkpointRepository.findByCode(code).orElse(null)
+    }
+
+    fun findSubChecks(checkpointId: UUID): List<ge.tiger8bit.domain.CheckpointSubCheck> {
+        return checkpointSubCheckRepository.findByCheckpointId(checkpointId)
     }
 
     @Transactional

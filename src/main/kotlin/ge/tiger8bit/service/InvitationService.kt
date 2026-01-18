@@ -6,6 +6,8 @@ import ge.tiger8bit.dto.InvitationStatus
 import ge.tiger8bit.getLogger
 import ge.tiger8bit.repository.InvitationRepository
 import ge.tiger8bit.repository.UserRepository
+import io.micronaut.data.model.Page
+import io.micronaut.data.model.Pageable
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.exceptions.HttpStatusException
 import jakarta.inject.Singleton
@@ -105,8 +107,8 @@ open class InvitationService(
         return invitation
     }
 
-    fun getOrganizationInvitations(organizationId: UUID): List<Invitation> =
-        invitationRepository.findByOrganizationId(organizationId)
+    fun getOrganizationInvitations(organizationId: UUID, pageable: Pageable): Page<Invitation> =
+        invitationRepository.findByOrganizationId(organizationId, pageable)
 
     @Transactional
     open fun cancelInvitation(invitationId: UUID): Boolean {

@@ -8,6 +8,8 @@ import ge.tiger8bit.getLogger
 import ge.tiger8bit.service.AccessService
 import ge.tiger8bit.service.AuthService
 import ge.tiger8bit.service.InvitationService
+import io.micronaut.data.model.Page
+import io.micronaut.data.model.Pageable
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.annotation.*
@@ -65,15 +67,27 @@ class InvitationController(
     @Secured("ROLE_BOSS", "ROLE_APP_OWNER")
     fun getInvitations(
         @QueryValue organizationId: UUID,
+        @QueryValue(defaultValue = "0") page: Int,
+        @QueryValue(defaultValue = "20") size: Int,
         principal: Principal
-    ): HttpResponse<List<InvitationResponse>> {
-        logger.info("GET /api/invitations - org: {}", organizationId)
+    ): HttpResponse<Page<InvitationResponse>> {
+        logger.info("GET /api/invitations - org: {}, page: {}, size: {}", organizationId, page, size)
 
         val userId = UUID.fromString(principal.name)
         accessService.ensureBossOrAppOwner(userId, organizationId)
 
-        val invitations = invitationService.getOrganizationInvitations(organizationId)
+        val pageable = Pageable.from(page, size)
+        val invitations = invitationService.getOrganizationInvitations(organizationId, pageable)
         return HttpResponse.ok(invitations.map { it.toResponse() })
+    }
+
+    @Get("/{id}")
+    @Secured("ROLE_BOSS", "ROLE_APP_OWNER")
+    fun getInvitation(@PathVariable id: UUID, principal: Principal): HttpResponse<InvitationResponse> {
+        val invitation = invitationService.getInvitationById(id) ?: return HttpResponse.notFound()
+        val userId = UUID.fromString(principal.name)
+        accessService.ensureBossOrAppOwner(userId, invitation.organizationId)
+        return HttpResponse.ok(invitation.toResponse())
     }
 
     @Delete("/{id}")

@@ -2,13 +2,12 @@ package ge.tiger8bit.service
 
 import ge.tiger8bit.domain.PatrolRoute
 import ge.tiger8bit.domain.PatrolRouteCheckpoint
-import ge.tiger8bit.dto.AddRouteCheckpointRequest
-import ge.tiger8bit.dto.BulkAddRouteCheckpointsRequest
-import ge.tiger8bit.dto.CreateRouteRequest
-import ge.tiger8bit.dto.RouteResponse
+import ge.tiger8bit.dto.*
 import ge.tiger8bit.getLogger
 import ge.tiger8bit.repository.PatrolRouteCheckpointRepository
 import ge.tiger8bit.repository.PatrolRouteRepository
+import io.micronaut.data.model.Page
+import io.micronaut.data.model.Pageable
 import io.micronaut.http.HttpStatus
 import io.micronaut.http.exceptions.HttpStatusException
 import jakarta.inject.Singleton
@@ -43,6 +42,42 @@ open class PatrolRouteService(
 
     fun findById(id: UUID): PatrolRoute? {
         return patrolRouteRepository.findById(id).orElse(null)
+    }
+
+    fun findByOrganizationId(orgId: UUID, userId: UUID, pageable: Pageable): Page<RouteResponse> {
+        accessService.ensureWorkerOrBossOrAppOwner(userId, orgId)
+        val page = patrolRouteRepository.findByOrganizationIdPaginated(orgId, pageable)
+        return page.map { it.toResponse() }
+    }
+
+    fun findBySiteId(siteId: UUID, userId: UUID, pageable: Pageable): Page<RouteResponse> {
+        val page = patrolRouteRepository.findBySiteIdPaginated(siteId, pageable)
+        if (page.content.isNotEmpty()) {
+            accessService.ensureWorkerOrBossOrAppOwner(userId, page.content.first().organizationId)
+        }
+        return page.map { it.toResponse() }
+    }
+
+    fun getById(id: UUID, userId: UUID): RouteResponse? {
+        val route = patrolRouteRepository.findById(id).orElse(null) ?: return null
+        accessService.ensureWorkerOrBossOrAppOwner(userId, route.organizationId)
+        return route.toResponse()
+    }
+
+    @Transactional
+    open fun update(id: UUID, request: UpdateRouteRequest, userId: UUID): RouteResponse {
+        val route = patrolRouteRepository.findById(id).orElseThrow {
+            HttpStatusException(HttpStatus.NOT_FOUND, "Route not found")
+        }
+        accessService.ensureBossOrAppOwner(userId, route.organizationId)
+
+        logger.info("Updating route: id={}", id)
+
+        request.name?.let { route.name = it }
+        patrolRouteRepository.update(route)
+
+        logger.info("Route updated: id={}", id)
+        return route.toResponse()
     }
 
     @Transactional

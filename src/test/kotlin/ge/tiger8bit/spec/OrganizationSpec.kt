@@ -25,7 +25,7 @@ class OrganizationSpec : BaseApiSpec() {
             val (token, _) = TestDataBuilder.appOwnerToken(Emails.unique("owner"))
 
             val response = client.toBlocking().retrieve(
-                HttpRequest.POST("/api/admin/organizations", CreateOrganizationRequest(Orgs.unique("Create"))).withAuth(token),
+                HttpRequest.POST("/api/organizations", CreateOrganizationRequest(Orgs.unique("Create"))).withAuth(token),
                 OrganizationResponse::class.java
             )
 
@@ -46,28 +46,23 @@ class OrganizationSpec : BaseApiSpec() {
                 OrganizationResponse::class.java
             )
 
-            val list = client.toBlocking().retrieve(
-                HttpRequest.GET<Any>("/api/organizations").withAuth(appOwnerToken),
-                Array<OrganizationResponse>::class.java
-            ).toList()
+            val page = getPage("/api/organizations?page=0&size=100", appOwnerToken, OrganizationResponse::class.java)
 
-            list.size shouldBeGreaterThanOrEqualTo 2
-            list.any { it.name == org1Name } shouldBe true
-            list.any { it.name == org2Name } shouldBe true
+            page.content.size shouldBeGreaterThanOrEqualTo 2
+            page.content.any { it.name == org1Name } shouldBe true
+            page.content.any { it.name == org2Name } shouldBe true
         }
 
-        "BOSS cannot access organization endpoints (forbidden)" {
+        "BOSS CAN access organization endpoints" {
             val (org, _) = fixtures.seedOrgAndSite()
             val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
 
-            val exception = assertThrows<HttpClientResponseException> {
-                client.toBlocking().retrieve(
-                    HttpRequest.GET<Any>("/api/organizations").withAuth(bossToken),
-                    Array<OrganizationResponse>::class.java
-                )
-            }
+            val response = client.toBlocking().exchange(
+                HttpRequest.GET<Any>("/api/organizations").withAuth(bossToken),
+                Map::class.java
+            )
 
-            exception.status shouldBe HttpStatus.FORBIDDEN
+            response.status shouldBe HttpStatus.OK
         }
 
         "BOSS cannot create organization (forbidden)" {

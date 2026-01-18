@@ -44,10 +44,16 @@ class IncidentController(
         @QueryValue organizationId: UUID,
         @QueryValue siteId: UUID? = null,
         @QueryValue status: IncidentStatus? = null,
+        @QueryValue(defaultValue = "0") page: Int,
+        @QueryValue(defaultValue = "20") size: Int,
         principal: Principal
-    ): List<IncidentResponse> {
+    ): io.micronaut.data.model.Page<IncidentResponse> {
         val userId = UUID.fromString(principal.name)
-        return incidentService.listIncidents(organizationId, siteId, status, userId)
+        println("[DEBUG_LOG] listIncidents: org=$organizationId, site=$siteId, status=$status, page=$page, size=$size")
+        val pageable = io.micronaut.data.model.Pageable.from(page, size)
+        val result = incidentService.listIncidents(organizationId, siteId, status, userId, pageable)
+        println("[DEBUG_LOG] listIncidents success: total=${result.totalSize}")
+        return result
     }
 
     @Patch("/{id}")
@@ -79,7 +85,9 @@ class IncidentController(
         principal: Principal
     ) {
         val userId = UUID.fromString(principal.name)
+        println("[DEBUG_LOG] deleteIncident: id=$id")
         incidentService.deleteIncident(id, userId)
+        println("[DEBUG_LOG] deleteIncident success")
     }
 
     @Post("/{id}/photos", consumes = [io.micronaut.http.MediaType.MULTIPART_FORM_DATA])
@@ -89,8 +97,7 @@ class IncidentController(
         @Part("photos") photos: Publisher<CompletedFileUpload>?,
         principal: Principal
     ): Mono<HttpResponse<Any>> {
-        return Flux.from(photos)
-            .collectList()
+        return (if (photos != null) Flux.from(photos).collectList() else Mono.just(emptyList()))
             .map { allPhotos ->
                 val userId = UUID.fromString(principal.name)
                 incidentService.addPhotosToIncident(id, allPhotos, userId)
