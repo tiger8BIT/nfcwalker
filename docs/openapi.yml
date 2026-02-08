@@ -254,6 +254,37 @@ paths:
                 type: object
                 additionalProperties:
                   type: object
+  /api/dev/database/reset:
+    delete:
+      operationId: resetDatabase
+      responses:
+        "200":
+          description: resetDatabase 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+  /api/dev/invitations/{id}/token:
+    get:
+      operationId: getInvitationToken
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: getInvitationToken 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
   /api/devices:
     get:
       operationId: getUserDevices
@@ -795,11 +826,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RouteResponse"
-  /api/scan/events/{eventId}/photos:
+  /api/scan/events/{scanEventId}/photos:
     post:
       operationId: addPhotosToScanEvent
       parameters:
-      - name: eventId
+      - name: scanEventId
         in: path
         required: true
         schema:
@@ -829,11 +860,13 @@ paths:
             application/json:
               schema:
                 type: object
-  /api/scan/events/{eventId}/photos/{photoId}:
+                additionalProperties:
+                  type: string
+  /api/scan/events/{scanEventId}/photos/{photoId}:
     delete:
       operationId: deletePhotoFromScanEvent
       parameters:
-      - name: eventId
+      - name: scanEventId
         in: path
         required: true
         schema:
@@ -848,6 +881,12 @@ paths:
       responses:
         "200":
           description: deletePhotoFromScanEvent 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
   /api/scan/finish:
     post:
       operationId: finishScanMultipart
@@ -867,8 +906,17 @@ paths:
                   items:
                     type: string
                     format: binary
+                subPhotos:
+                  type: array
+                  nullable: true
+                  items:
+                    type: string
+                    format: binary
             encoding:
               metadata:
+                contentType: application/octet-stream
+                explode: false
+              subPhotos:
                 contentType: application/octet-stream
                 explode: false
               photos:
@@ -1008,6 +1056,26 @@ paths:
                 type: object
                 additionalProperties:
                   type: object
+  /auth/dev/login:
+    post:
+      operationId: magicLogin
+      parameters:
+      - name: email
+        in: query
+        required: true
+        explode: false
+        schema:
+          type: string
+          default: admin@nfcwalker.com
+      responses:
+        "200":
+          description: magicLogin 200 response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
   /auth/health:
     get:
       operationId: health

@@ -1,0 +1,679 @@
+{
+  "info": {
+    "_postman_id": "8b8b8b8b-4b4b-4b4b-8b8b-8b8b8b8b8b8b",
+    "name": "NFC Walker User Flows",
+    "description": "Step-by-step testing of real user flows: Owner -> Boss -> Worker.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Setup: Database Reset",
+      "item": [
+        {
+          "name": "Reset Database (Clean Start)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/dev/database/reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dev",
+                "database",
+                "reset"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Flow 1: App Owner (Creation & Invitation)",
+      "item": [
+        {
+          "name": "1. Owner Magic Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"owner_token\", jsonData.token);",
+                  "pm.collectionVariables.set(\"active_token\", jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/dev/login?email=owner@nfcwalker.com",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "dev",
+                "login"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "owner@nfcwalker.com"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Create Organization",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"orgId\", jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Global Security Corp\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/organizations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "organizations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Invite Boss",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"boss_invite_id\", jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"boss@nfcwalker.com\", \"organizationId\": \"{{orgId}}\", \"role\": \"ROLE_BOSS\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/invitations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invitations"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Flow 2: Boss (Accept & Infrastructure)",
+      "item": [
+        {
+          "name": "1. Boss Magic Login (New Account)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"boss_token\", jsonData.token);",
+                  "pm.collectionVariables.set(\"active_token\", jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/dev/login?email=boss@nfcwalker.com",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "dev",
+                "login"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "boss@nfcwalker.com"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Get Boss Invite Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"boss_invite_token\", jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/dev/invitations/{{boss_invite_id}}/token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dev",
+                "invitations",
+                "{{boss_invite_id}}",
+                "token"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Accept Invitation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"boss_token\", jsonData.token);",
+                  "pm.collectionVariables.set(\"active_token\", jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"token\": \"{{boss_invite_token}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/invite/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "invite",
+                "accept"
+              ]
+            }
+          }
+        },
+        {
+          "name": "4. Create Site",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"siteId\", jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"organizationId\": \"{{orgId}}\", \"name\": \"Main Office\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sites",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sites"
+              ]
+            }
+          }
+        },
+        {
+          "name": "5. Create Checkpoint",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"checkpointId\", jsonData.id);",
+                  "pm.collectionVariables.set(\"checkpointCode\", jsonData.code);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"organizationId\": \"{{orgId}}\", \"siteId\": \"{{siteId}}\", \"code\": \"CP-{{$randomInt}}\", \"label\": \"Entrance\", \"geoLat\": 0, \"geoLon\": 0, \"radiusM\": 100}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/checkpoints",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "checkpoints"
+              ]
+            }
+          }
+        },
+        {
+          "name": "6. Create Route",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"routeId\", jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"organizationId\": \"{{orgId}}\", \"siteId\": \"{{siteId}}\", \"name\": \"Night Patrol\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/routes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "routes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "7. Add Point to Route",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"checkpoints\": [{\"checkpointId\": \"{{checkpointId}}\", \"seq\": 1, \"minOffsetSec\": 0, \"maxOffsetSec\": 3600}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/routes/{{routeId}}/points",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "routes",
+                "{{routeId}}",
+                "points"
+              ]
+            }
+          }
+        },
+        {
+          "name": "8. Invite Worker",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"worker_invite_id\", jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"worker@nfcwalker.com\", \"organizationId\": \"{{orgId}}\", \"role\": \"ROLE_WORKER\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/invitations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "invitations"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Flow 3: Worker (Patrol)",
+      "item": [
+        {
+          "name": "1. Worker Magic Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"worker_token\", jsonData.token);",
+                  "pm.collectionVariables.set(\"active_token\", jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/dev/login?email=worker@nfcwalker.com",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "dev",
+                "login"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "worker@nfcwalker.com"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Get Worker Invite Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"worker_invite_token\", jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/dev/invitations/{{worker_invite_id}}/token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "dev",
+                "invitations",
+                "{{worker_invite_id}}",
+                "token"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Accept Invitation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"worker_token\", jsonData.token);",
+                  "pm.collectionVariables.set(\"active_token\", jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"token\": \"{{worker_invite_token}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/invite/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "invite",
+                "accept"
+              ]
+            }
+          }
+        },
+        {
+          "name": "4. Register Device",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"deviceId\", jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"deviceId\": \"DEVICE-{{$randomUUID}}\", \"metadata\": \"{\\\"platform\\\": \\\"Android\\\"}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/devices?organizationId={{orgId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "devices"
+              ],
+              "query": [
+                {
+                  "key": "organizationId",
+                  "value": "{{orgId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{active_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "active_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "boss_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "worker_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orgId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "boss_invite_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "boss_invite_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "worker_invite_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "worker_invite_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "siteId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "checkpointId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "checkpointCode",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "routeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "deviceId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

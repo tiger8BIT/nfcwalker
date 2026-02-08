@@ -22,7 +22,8 @@ import java.util.*
 class AuthController(
     private val authService: AuthService,
     private val invitationService: InvitationService,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val jwtTokenService: ge.tiger8bit.service.JwtTokenService
 ) {
     private val logger = getLogger()
     private val formatter = DateTimeFormatter.ISO_INSTANT
@@ -68,19 +69,26 @@ class AuthController(
         }
 
         val accepted = authService.acceptInvitation(request.token, userId)
-        val response: Map<String, Any> = if (accepted) {
-            mapOf("status" to "accepted", "role" to invitation.role.name)
-        } else {
-            mapOf("error" to "Failed to accept invitation")
+
+        if (!accepted) {
+            return HttpResponse.badRequest(mapOf("error" to "Failed to accept invitation"))
         }
-        return if (accepted) {
-            HttpResponse.ok(response)
-        } else {
-            HttpResponse.badRequest(response)
-        }
+
+        // Generate a new JWT token with the updated roles
+        val user = userRepository.findById(userId).orElseThrow()
+        val newToken = jwtTokenService.generateForUser(user.id!!)
+
+        return HttpResponse.ok(
+            mapOf(
+                "status" to "accepted",
+                "role" to invitation.role.name,
+                "token" to newToken
+            )
+        )
     }
 
     @Get("/health")
+    @Secured(SecurityRule.IS_ANONYMOUS)
     fun health(): HttpResponse<Map<String, String>> {
         return HttpResponse.ok(mapOf("status" to "ok"))
     }

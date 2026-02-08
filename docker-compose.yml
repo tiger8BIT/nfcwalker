@@ -10,6 +10,9 @@ services:
       - "8080:8080"
     env_file:
       - .env.docker
+    environment:
+      - MICRONAUT_ENVIRONMENTS=local
+      - JAVA_OPTS=-Dio.netty.allocator.type=unpooled -Dio.netty.noPreferDirect=true
     command: [ "java", "-jar", "/app/libs/nfcwalker-0.1-all.jar" ]
     depends_on:
       postgres:

@@ -168,13 +168,18 @@ open class ScanService(
                 )
             }
 
-        fileManagementService.ifPresent { fms ->
+        fileManagementService.ifPresentOrElse({ fms ->
+            logger.info("FileManagementService PRESENT, processing {} photos", photos.size)
+            logger.info("SubCheckEvents map: {}", subCheckEvents.mapValues { "eventId=${it.value.id}" })
+
             photos.forEach { photo ->
                 val partName = photo.name
 
                 // Determine entity for attachment: main event, sub-check event, or incident
                 var attachmentEntityType = AttachmentEntityType.scan_event
                 var attachmentEntityId = eventId
+
+                logger.info("Photo: filename='{}', partName='{}'", photo.filename, partName)
 
                 // Check if photo is for an incident (incidentPhotos_{index})
                 if (partName.startsWith("incidentPhotos_")) {
@@ -204,18 +209,26 @@ open class ScanService(
                         logger.warn("Invalid subCheckId in part name: {}", subCheckIdStr)
                     }
                 } else if (photo.filename.contains("sub_")) {
-                    // Alternative mapping using filename prefix: sub_{UUID}.jpg
-                    val subCheckIdStr = photo.filename.substringAfter("sub_").substringBefore(".jpg").substringBefore("_")
-                    logger.debug("Mapping photo via filename: {}, subCheckIdStr: {}", photo.filename, subCheckIdStr)
+                    // Alternative mapping using filename prefix: sub_{UUID}_*.jpg or sub_{UUID}.jpg
+                    val afterSub = photo.filename.substringAfter("sub_")
+                    val subCheckIdStr = if (afterSub.contains("_")) {
+                        afterSub.substringBefore("_")  // sub_{UUID}_1.jpg → UUID
+                    } else {
+                        afterSub.substringBefore(".")  // sub_{UUID}.jpg → UUID
+                    }
+                    logger.info("Extracted subCheckIdStr: '{}'", subCheckIdStr)
                     try {
                         val subCheckId = UUID.fromString(subCheckIdStr)
                         subCheckEvents[subCheckId]?.let { subEvent ->
                             attachmentEntityType = AttachmentEntityType.sub_check_event
                             attachmentEntityId = subEvent.id!!
-                            logger.debug("Mapped to sub-check event: {}", attachmentEntityId)
-                        }
+                            logger.info("✅ Mapped to sub_check_event: subCheckId={}, subEventId={}", subCheckId, attachmentEntityId)
+                        } ?: logger.error(
+                            "❌ NO sub-check event for subCheckId={}, available: {}",
+                            subCheckId, subCheckEvents.keys
+                        )
                     } catch (e: Exception) {
-                        logger.warn("Invalid subCheckId in filename: {}", photo.filename)
+                        logger.error("❌ Failed to parse UUID from '{}': {}", subCheckIdStr, e.message)
                     }
                 }
 
@@ -223,8 +236,11 @@ open class ScanService(
                     AttachmentEntityType.incident -> "incidents/$attachmentEntityId/${UUID.randomUUID()}_${photo.filename}"
                     else -> "scans/$eventId/${UUID.randomUUID()}_${photo.filename}"
                 }
+
+                logger.info("Uploading: type={}, entityId={}, filename={}", attachmentEntityType, attachmentEntityId, photo.filename)
                 val filePath = fms.uploadFile(photo, path)
-                attachmentRepository.save(
+
+                val saved = attachmentRepository.save(
                     Attachment(
                         entityType = attachmentEntityType,
                         entityId = attachmentEntityId,
@@ -234,8 +250,11 @@ open class ScanService(
                         fileSize = photo.size
                     )
                 )
+                logger.info("✅ Saved attachment id={}", saved.id)
             }
-        }
+        }, {
+            logger.error("❌❌❌ FileManagementService NOT PRESENT - photos NOT saved!")
+        })
 
         return response
     }

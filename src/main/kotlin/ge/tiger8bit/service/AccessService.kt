@@ -43,15 +43,17 @@ open class AccessService(
     fun ensureBossOrAppOwner(userId: UUID, orgId: UUID) {
         logger.info("ensureBossOrAppOwner({}, {}) - checking permissions", userId, orgId)
         val userRoles = rolesForUser(userId)
+
+        // APP_OWNER is a global super-admin
         if (userRoles.any { it.second == Role.ROLE_APP_OWNER }) {
-            logger.info("ensureBossOrAppOwner({}, {}) - PASSED: user is APP_OWNER", userId, orgId)
+            logger.info("ensureBossOrAppOwner - PASSED: user is global APP_OWNER")
             return
         }
+
         if (userRoles.any { it.first == orgId && it.second == Role.ROLE_BOSS }) {
-            logger.info("ensureBossOrAppOwner({}, {}) - PASSED: user is BOSS in org", userId, orgId)
+            logger.info("ensureBossOrAppOwner - PASSED: user is BOSS in org {}", orgId)
             return
         }
-        logger.warn("ensureBossOrAppOwner({}, {}) - DENIED: user has no Boss or AppOwner role. Roles: {}", userId, orgId, userRoles)
         forbidden("Boss or AppOwner role required for organization")
     }
 

@@ -8,8 +8,8 @@ object ProjectConfig : AbstractProjectConfig() {
 
     override fun extensions() = listOf(MicronautKotest5Extension)
 
-    override val parallelism: Int =
-        Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
+    override val parallelism: Int = System.getProperty("kotest.parallelism")?.toIntOrNull()
+        ?: Runtime.getRuntime().availableProcessors().coerceIn(2, 8)
 
     // Each spec gets its own PostgreSQL schema, so parallel execution is safe
     @OptIn(ExperimentalKotest::class)

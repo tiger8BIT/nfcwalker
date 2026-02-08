@@ -24,6 +24,8 @@ micronaut:
       email: noreply@nfcwalker.com
       name: NFC Walker
 
+local: true
+
 # JavaMail - host/port overridden by BaseSpec, rest here
 javamail:
   authentication:
@@ -65,3 +67,5 @@ logging:
     io.micronaut.security.token.jwt: DEBUG
     ge.tiger8bit.service.AccessService: INFO
     ge.tiger8bit.service.JwtTokenService: INFO
+    ge.tiger8bit.service.ScanService: DEBUG
+    ge.tiger8bit.controller.ScanController: DEBUG

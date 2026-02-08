@@ -190,3 +190,23 @@ tasks.register<Copy>("copyOpenApi") {
 tasks.named("build") {
     finalizedBy("copyOpenApi")
 }
+
+tasks.register("setupLocalEnv") {
+    description = "Copies .env.docker.example to .env.docker if it doesn't exist"
+    doLast {
+        val exampleFile = file(".env.docker.example")
+        val targetFile = file(".env.docker")
+        if (exampleFile.exists() && !targetFile.exists()) {
+            exampleFile.copyTo(targetFile)
+            println(".env.docker created from example template")
+        }
+    }
+}
+
+tasks.named("prepareKotlinBuildScriptModel") {
+    dependsOn("setupLocalEnv")
+}
+
+// Ensure it runs during common tasks
+tasks.named("clean") { dependsOn("setupLocalEnv") }
+tasks.named("shadowJar") { dependsOn("setupLocalEnv") }

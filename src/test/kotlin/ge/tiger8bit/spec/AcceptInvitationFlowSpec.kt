@@ -52,6 +52,9 @@ class AcceptInvitationFlowSpec : BaseApiSpec() {
             val response = client.toBlocking().retrieve(request, Map::class.java)
 
             response["status"] shouldBe "accepted"
+            response["role"] shouldBe Role.ROLE_WORKER.name
+            (response["token"] as? String)?.isNotBlank() shouldBe true  // New JWT token should be returned
+
             userRoleRepository.findByIdUserId(worker.id!!)
                 .any { it.role == Role.ROLE_WORKER && it.id.organizationId == org.id } shouldBe true
             invitationRepository.findById(invite.id).orElseThrow().status shouldBe InvitationStatus.ACCEPTED

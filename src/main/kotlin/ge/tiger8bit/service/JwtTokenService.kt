@@ -4,9 +4,9 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.crypto.MACSigner
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
+import ge.tiger8bit.configproperties.JwtSecretGeneratorProperties
 import ge.tiger8bit.getLogger
 import ge.tiger8bit.repository.UserRoleRepository
-import ge.tiger8bit.configproperties.JwtSecretGeneratorProperties
 import jakarta.inject.Singleton
 import java.util.*
 
@@ -18,18 +18,20 @@ class JwtTokenService(
     private val logger = getLogger()
     private val signingKeyBytes: ByteArray by lazy { jwtSecretGeneratorProperties.secret.toByteArray() }
 
-    fun generateForUser(userId: UUID): String {
+    fun generateForUser(userId: UUID, overrideRoles: List<String>? = null): String {
         val now = Date()
         val exp = Date(now.time + 3600_000L) // 1 hour
 
-        logger.info("generateForUser: fetching roles for userId={}", userId)
-        val userRoles = userRoleRepository.findByIdUserId(userId)
-        logger.info("generateForUser: found {} user roles", userRoles.size)
-        userRoles.forEach { ur ->
-            logger.info("  - role: userId={}, orgId={}, role={}", ur.id.userId, ur.id.organizationId, ur.role)
+        val dbRoles: List<String> = if (overrideRoles != null) {
+            logger.info("generateForUser: using override roles: {}", overrideRoles)
+            overrideRoles
+        } else {
+            logger.info("generateForUser: fetching roles for userId={}", userId)
+            val userRoles = userRoleRepository.findByIdUserId(userId)
+            logger.info("generateForUser: found {} user roles", userRoles.size)
+            userRoles.map { it.role.name }
         }
 
-        val dbRoles: List<String> = userRoles.map { it.role.name }
         logger.info("generateForUser: dbRoles={}", dbRoles)
 
         // Always use original role names for claim (e.g., ROLE_BOSS)
