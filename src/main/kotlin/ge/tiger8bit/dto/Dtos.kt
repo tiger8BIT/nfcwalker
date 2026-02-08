@@ -204,6 +204,24 @@ data class FinishScanResponse(
 // ===== Authentication & User Management DTOs =====
 
 @Serdeable
+data class CreatePatrolRunRequest(
+    val routeId: UUID,
+    val organizationId: UUID,
+    val plannedStart: java.time.Instant? = null,
+    val plannedEnd: java.time.Instant? = null
+)
+
+@Serdeable
+data class PatrolRunResponse(
+    val id: UUID,
+    val routeId: UUID,
+    val organizationId: UUID,
+    val status: PatrolRunStatus,
+    val plannedStart: java.time.Instant,
+    val plannedEnd: java.time.Instant
+)
+
+@Serdeable
 enum class PatrolRunStatus {
     PENDING,
     IN_PROGRESS,

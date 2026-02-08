@@ -55,35 +55,6 @@ APP_CHALLENGE_SECRET=dev-challenge-secret-minimum-32-chars-required-secure
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` - for OAuth login
 - `SMTP_USERNAME` / `SMTP_PASSWORD` - for email invitations
 
-### 2. Configure Environment
-
-Edit `.env.docker` and replace placeholders:
-
-```bash
-# Open the file
-nano .env.docker
-
-# Replace these REQUIRED values:
-JWT_SECRET=<REPLACE_WITH_SECURE_32_CHAR_STRING>
-APP_CHALLENGE_SECRET=<REPLACE_WITH_SECURE_32_CHAR_STRING>
-```
-
-**Quick setup for local development:**
-
-```bash
-# Generate secure secrets automatically
-sed -i.bak "s/<REPLACE_WITH_SECURE_32_CHAR_STRING>/$(openssl rand -base64 32)/g" .env.docker
-
-# Or use these pre-filled dev values (NOT for production!)
-JWT_SECRET=dev-jwt-secret-minimum-32-chars-required-for-hs256-algorithm
-APP_CHALLENGE_SECRET=dev-challenge-secret-minimum-32-chars-required-secure
-```
-
-**Optional OAuth/SMTP** (can be left as placeholders for local dev):
-
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` - for OAuth login
-- `SMTP_USERNAME` / `SMTP_PASSWORD` - for email invitations
-
 ### 3. Start Services
 
 ```bash
@@ -198,6 +169,12 @@ APP_CHALLENGE_SECRET=$(openssl rand -base64 32)
 # Rebuild and restart application
 ./gradlew clean shadowJar -Plocal
 docker-compose up -d --build app
+
+# Install/Update git hooks
+./gradlew installGitHooks
+
+# Manually update OpenAPI spec
+./gradlew copyOpenApi
 
 # View application logs
 docker-compose logs app -f

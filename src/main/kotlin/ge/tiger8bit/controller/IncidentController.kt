@@ -49,11 +49,8 @@ class IncidentController(
         principal: Principal
     ): io.micronaut.data.model.Page<IncidentResponse> {
         val userId = UUID.fromString(principal.name)
-        println("[DEBUG_LOG] listIncidents: org=$organizationId, site=$siteId, status=$status, page=$page, size=$size")
         val pageable = io.micronaut.data.model.Pageable.from(page, size)
-        val result = incidentService.listIncidents(organizationId, siteId, status, userId, pageable)
-        println("[DEBUG_LOG] listIncidents success: total=${result.totalSize}")
-        return result
+        return incidentService.listIncidents(organizationId, siteId, status, userId, pageable)
     }
 
     @Patch("/{id}")
@@ -85,9 +82,7 @@ class IncidentController(
         principal: Principal
     ) {
         val userId = UUID.fromString(principal.name)
-        println("[DEBUG_LOG] deleteIncident: id=$id")
         incidentService.deleteIncident(id, userId)
-        println("[DEBUG_LOG] deleteIncident success")
     }
 
     @Post("/{id}/photos", consumes = [io.micronaut.http.MediaType.MULTIPART_FORM_DATA])

@@ -94,7 +94,7 @@ CREATE TABLE sites (
     organization_id UUID NOT NULL,
     name VARCHAR(200) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_sites_organization FOREIGN KEY (organization_id) REFERENCES organizations(id)
+    CONSTRAINT fk_sites_organization FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_sites_organization_id ON sites(organization_id);
@@ -112,8 +112,8 @@ CREATE TABLE checkpoints (
     allow_notes   BOOLEAN DEFAULT TRUE,
     description   VARCHAR(500),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_checkpoints_organization FOREIGN KEY (organization_id) REFERENCES organizations(id),
-    CONSTRAINT fk_checkpoints_site FOREIGN KEY (site_id) REFERENCES sites(id)
+    CONSTRAINT fk_checkpoints_organization FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
+    CONSTRAINT fk_checkpoints_site FOREIGN KEY (site_id) REFERENCES sites (id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_checkpoints_organization_id ON checkpoints(organization_id);
@@ -140,8 +140,8 @@ CREATE TABLE patrol_routes (
     site_id UUID NOT NULL,
     name VARCHAR(200) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_patrol_routes_organization FOREIGN KEY (organization_id) REFERENCES organizations(id),
-    CONSTRAINT fk_patrol_routes_site FOREIGN KEY (site_id) REFERENCES sites(id)
+    CONSTRAINT fk_patrol_routes_organization FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
+    CONSTRAINT fk_patrol_routes_site FOREIGN KEY (site_id) REFERENCES sites (id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_patrol_routes_organization_id ON patrol_routes(organization_id);
@@ -154,8 +154,8 @@ CREATE TABLE patrol_route_checkpoints (
     min_offset_sec INT NOT NULL DEFAULT 0,
     max_offset_sec INT NOT NULL DEFAULT 3600,
     PRIMARY KEY (route_id, checkpoint_id),
-    CONSTRAINT fk_prc_route FOREIGN KEY (route_id) REFERENCES patrol_routes(id),
-    CONSTRAINT fk_prc_checkpoint FOREIGN KEY (checkpoint_id) REFERENCES checkpoints(id)
+    CONSTRAINT fk_prc_route FOREIGN KEY (route_id) REFERENCES patrol_routes (id) ON DELETE CASCADE,
+    CONSTRAINT fk_prc_checkpoint FOREIGN KEY (checkpoint_id) REFERENCES checkpoints (id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_prc_route_id ON patrol_route_checkpoints(route_id);
@@ -168,8 +168,8 @@ CREATE TABLE patrol_runs (
     planned_end TIMESTAMP NOT NULL,
     status patrol_run_status NOT NULL DEFAULT 'PENDING',
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_patrol_runs_route FOREIGN KEY (route_id) REFERENCES patrol_routes(id),
-    CONSTRAINT fk_patrol_runs_organization FOREIGN KEY (organization_id) REFERENCES organizations(id)
+    CONSTRAINT fk_patrol_runs_route FOREIGN KEY (route_id) REFERENCES patrol_routes (id) ON DELETE CASCADE,
+    CONSTRAINT fk_patrol_runs_organization FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_patrol_runs_route_id ON patrol_runs(route_id);
@@ -188,8 +188,8 @@ CREATE TABLE patrol_scan_events (
     check_status check_status,
     check_notes  TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_pse_patrol_run FOREIGN KEY (patrol_run_id) REFERENCES patrol_runs(id),
-    CONSTRAINT fk_pse_checkpoint FOREIGN KEY (checkpoint_id) REFERENCES checkpoints(id)
+    CONSTRAINT fk_pse_patrol_run FOREIGN KEY (patrol_run_id) REFERENCES patrol_runs (id) ON DELETE CASCADE,
+    CONSTRAINT fk_pse_checkpoint FOREIGN KEY (checkpoint_id) REFERENCES checkpoints (id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_pse_patrol_run_id ON patrol_scan_events(patrol_run_id);
@@ -220,7 +220,7 @@ CREATE TABLE challenge_used
     used_at       TIMESTAMP    NOT NULL DEFAULT NOW(),
     device_id     VARCHAR(200) NOT NULL,
     checkpoint_id UUID         NOT NULL,
-    CONSTRAINT fk_challenge_used_checkpoint FOREIGN KEY (checkpoint_id) REFERENCES checkpoints (id)
+    CONSTRAINT fk_challenge_used_checkpoint FOREIGN KEY (checkpoint_id) REFERENCES checkpoints (id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_challenge_used_expires_at ON challenge_used (expires_at);
@@ -239,11 +239,11 @@ CREATE TABLE incidents
     status          incident_status   NOT NULL DEFAULT 'OPEN',
     created_at      TIMESTAMP         NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMP         NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_incidents_organization FOREIGN KEY (organization_id) REFERENCES organizations (id),
-    CONSTRAINT fk_incidents_site FOREIGN KEY (site_id) REFERENCES sites (id),
-    CONSTRAINT fk_incidents_checkpoint FOREIGN KEY (checkpoint_id) REFERENCES checkpoints (id),
-    CONSTRAINT fk_incidents_scan_event FOREIGN KEY (scan_event_id) REFERENCES patrol_scan_events (id),
-    CONSTRAINT fk_incidents_reported_by FOREIGN KEY (reported_by) REFERENCES users (id)
+    CONSTRAINT fk_incidents_organization FOREIGN KEY (organization_id) REFERENCES organizations (id) ON DELETE CASCADE,
+    CONSTRAINT fk_incidents_site FOREIGN KEY (site_id) REFERENCES sites (id) ON DELETE CASCADE,
+    CONSTRAINT fk_incidents_checkpoint FOREIGN KEY (checkpoint_id) REFERENCES checkpoints (id) ON DELETE CASCADE,
+    CONSTRAINT fk_incidents_scan_event FOREIGN KEY (scan_event_id) REFERENCES patrol_scan_events (id) ON DELETE CASCADE,
+    CONSTRAINT fk_incidents_reported_by FOREIGN KEY (reported_by) REFERENCES users (id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_incidents_organization_id ON incidents (organization_id);

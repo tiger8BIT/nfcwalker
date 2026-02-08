@@ -22,6 +22,8 @@ sequenceDiagram
     API-->>Admin: routeId
     Admin->>API: POST /api/admin/routes/{id}/points
     Note right of API: Links checkpoints to route with sequence
+    Admin->>API: POST /api/patrol-runs (routeId, orgId)
+    API-->>Admin: patrolRunId, status=IN_PROGRESS
 
     Note over Worker, API: 2. Worker Onboarding
     Admin->>API: POST /api/invitations (email, role=WORKER)
@@ -33,7 +35,7 @@ sequenceDiagram
     API-->>Worker: deviceId
 
     Note over Worker, API: 3. Patrol Scanning Flow
-    Worker->>API: POST /api/scan/start (code, deviceId)
+    Worker->>API: POST /api/scan/start (orgId, deviceId, code)
     Note right of API: Validates checkpoint code & active patrol run
     API-->>Worker: Challenge JWT + ScanPolicy (GPS/Photo rules)
     Worker->>Worker: Perform GPS validation
@@ -42,7 +44,7 @@ sequenceDiagram
     Worker->>API: POST /api/scan/finish (Challenge, Photos, SubChecks)
     API->>DB: Verify challenge & save scan events
     API->>DB: Store attachments (photos)
-    API-->>Worker: Verdict (OK/FAIL) + Scan summary
+    API-->>Worker: Verdict (OK/WARNING/FAIL) + eventId
 
     Note over Worker, Admin: 4. Incident Reporting & Management
     Worker->>API: POST /api/incidents (description, photos, metadata)
@@ -62,6 +64,7 @@ sequenceDiagram
 - Creates hierarchical structure: Organization → Site → Checkpoint → Route
 - Each checkpoint has unique code (e.g., "CP-101") for NFC scanning
 - Routes link multiple checkpoints in sequence with timing constraints
+- Creates patrol run instance (status: IN_PROGRESS by default)
 
 ### 2. Worker Onboarding
 
@@ -75,9 +78,11 @@ sequenceDiagram
 - Challenge JWT prevents replay attacks and ensures scan freshness
 - ScanPolicy defines GPS tolerance, photo requirements, sub-checks
 - System validates GPS coordinates, photos, and sub-check completion
+- Returns verdict: OK (no issues), WARNING (problems found or incidents), FAIL (validation failed)
 
 ### 4. Incident Management
 
-- Workers report issues during patrol with photos and metadata
+- Workers report issues during patrol (embedded in finish scan) or standalone
 - Admins review and resolve incidents
 - Full audit trail maintained in database
+- Photos can be attached to incidents

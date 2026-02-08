@@ -128,8 +128,8 @@ class ScanFlowSpec : BaseApiSpec() {
                 scannedAt = Instant.now(),
                 lat = BigDecimal("41.7151377"),
                 lon = BigDecimal("44.8270903"),
-                checkStatus = CheckStatus.PROBLEMS_FOUND,
-                checkNotes = "Broken glass"
+                checkStatus = CheckStatus.OK,
+                checkNotes = "All good"
             )
 
             val body = io.micronaut.http.client.multipart.MultipartBody.builder()
@@ -240,7 +240,6 @@ class ScanFlowSpec : BaseApiSpec() {
 
             // Verify sub-check events in DB
             val savedSubEvents = fixtures.getPatrolSubCheckEvents(finish.eventId)
-            println("[DEBUG_LOG] Saved SubEvents: ${savedSubEvents.map { "id=${it.subCheckId}, status=${it.status}, notes=${it.notes}" }}")
             savedSubEvents.size shouldBe 2
 
             val s1 = savedSubEvents.find { it.subCheckId == subCheck1Id }!!

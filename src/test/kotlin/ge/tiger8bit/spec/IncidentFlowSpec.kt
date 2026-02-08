@@ -71,10 +71,9 @@ class IncidentFlowSpec : BaseApiSpec() {
                 FinishScanResponse::class.java
             )
 
-            finish.verdict shouldBe ScanVerdict.OK
+            finish.verdict shouldBe ScanVerdict.WARNING
 
             val page = getPage("/api/incidents?organizationId=${org.id}", bossToken, IncidentResponse::class.java)
-            println("[DEBUG_LOG] Page content: ${page.content}")
 
             page.content.shouldHaveSize(2)
             page.content.any { it.description == "Broken window" && it.severity == IncidentSeverity.HIGH } shouldBe true
@@ -116,44 +115,6 @@ class IncidentFlowSpec : BaseApiSpec() {
             val attachments = fixtures.getAttachments(AttachmentEntityType.incident, response.id)
             attachments.shouldHaveSize(1)
             attachments[0].originalName shouldBe "pipe.jpg"
-        }
-
-        "patch incident status" {
-            val (org, site) = fixtures.seedOrgAndSite()
-            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
-            val (workerToken, _) = specHelpers.createWorkerToken(org.id!!, email = Emails.unique("worker"))
-
-            val created = try {
-                client.toBlocking().retrieve(
-                    HttpRequest.POST(
-                        "/api/incidents",
-                        MultipartBody.builder().addPart(
-                            "metadata", "metadata.json", MediaType.APPLICATION_JSON_TYPE, objectMapper.writeValueAsBytes(
-                                IncidentCreateRequest(org.id, site.id, description = "Test incident")
-                            )
-                        ).build()
-                    ).contentType(MediaType.MULTIPART_FORM_DATA).withAuth(workerToken),
-                    IncidentResponse::class.java
-                )
-            } catch (e: io.micronaut.http.client.exceptions.HttpClientResponseException) {
-                println("[DEBUG_LOG] Create incident for patch failed: ${e.response.body()}")
-                throw e
-            }
-
-            val patched = try {
-                client.toBlocking().retrieve(
-                    HttpRequest.PATCH(
-                        "/api/incidents/${created.id}",
-                        IncidentPatchRequest(status = IncidentStatus.IN_PROGRESS)
-                    ).withAuth(bossToken),
-                    IncidentResponse::class.java
-                )
-            } catch (e: io.micronaut.http.client.exceptions.HttpClientResponseException) {
-                println("[DEBUG_LOG] Patch incident failed: ${e.response.body()}")
-                throw e
-            }
-
-            patched.status shouldBe IncidentStatus.IN_PROGRESS
         }
 
         "delete incident" {
@@ -283,6 +244,91 @@ class IncidentFlowSpec : BaseApiSpec() {
             patched.description shouldBe "Updated description"
             patched.severity shouldBe IncidentSeverity.CRITICAL
             patched.id shouldBe created.id
+        }
+
+        "list incidents with pagination" {
+            val (org, site) = fixtures.seedOrgAndSite()
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
+            val (workerToken, _) = specHelpers.createWorkerToken(org.id!!, email = Emails.unique("worker"))
+
+            // Create 5 incidents
+            repeat(5) { i ->
+                client.toBlocking().retrieve(
+                    HttpRequest.POST(
+                        "/api/incidents",
+                        MultipartBody.builder().addPart(
+                            "metadata", "metadata.json", MediaType.APPLICATION_JSON_TYPE, objectMapper.writeValueAsBytes(
+                                IncidentCreateRequest(org.id, site.id, description = "Incident $i")
+                            )
+                        ).build()
+                    ).contentType(MediaType.MULTIPART_FORM_DATA).withAuth(workerToken),
+                    IncidentResponse::class.java
+                )
+            }
+
+            // Get first page (size=2)
+            val page1 = getPage("/api/incidents?organizationId=${org.id}&page=0&size=2", bossToken, IncidentResponse::class.java)
+
+            page1.content.shouldHaveSize(2)
+            page1.totalSize shouldBe 5
+            page1.totalPages shouldBe 3
+            page1.pageNumber shouldBe 0
+
+            // Get second page
+            val page2 = getPage("/api/incidents?organizationId=${org.id}&page=1&size=2", bossToken, IncidentResponse::class.java)
+
+            page2.content.shouldHaveSize(2)
+            page2.totalSize shouldBe 5
+            page2.pageNumber shouldBe 1
+
+            // Get last page
+            val page3 = getPage("/api/incidents?organizationId=${org.id}&page=2&size=2", bossToken, IncidentResponse::class.java)
+
+            page3.content.shouldHaveSize(1)
+            page3.totalSize shouldBe 5
+            page3.pageNumber shouldBe 2
+        }
+
+        "update incident status via patch" {
+            val (org, site) = fixtures.seedOrgAndSite()
+            val (bossToken, _) = specHelpers.createBossToken(org.id!!, email = Emails.unique("boss"))
+            val (workerToken, _) = specHelpers.createWorkerToken(org.id!!, email = Emails.unique("worker"))
+
+            val created = client.toBlocking().retrieve(
+                HttpRequest.POST(
+                    "/api/incidents",
+                    MultipartBody.builder().addPart(
+                        "metadata", "metadata.json", MediaType.APPLICATION_JSON_TYPE, objectMapper.writeValueAsBytes(
+                            IncidentCreateRequest(org.id, site.id, description = "Test status change")
+                        )
+                    ).build()
+                ).contentType(MediaType.MULTIPART_FORM_DATA).withAuth(workerToken),
+                IncidentResponse::class.java
+            )
+
+            created.status shouldBe IncidentStatus.OPEN
+
+            // Update to IN_PROGRESS
+            val patched = client.toBlocking().retrieve(
+                HttpRequest.PATCH(
+                    "/api/incidents/${created.id}",
+                    IncidentPatchRequest(status = IncidentStatus.IN_PROGRESS)
+                ).withAuth(bossToken),
+                IncidentResponse::class.java
+            )
+
+            patched.status shouldBe IncidentStatus.IN_PROGRESS
+
+            // Update to RESOLVED
+            val resolved = client.toBlocking().retrieve(
+                HttpRequest.PATCH(
+                    "/api/incidents/${created.id}",
+                    IncidentPatchRequest(status = IncidentStatus.RESOLVED)
+                ).withAuth(bossToken),
+                IncidentResponse::class.java
+            )
+
+            resolved.status shouldBe IncidentStatus.RESOLVED
         }
     }
 }

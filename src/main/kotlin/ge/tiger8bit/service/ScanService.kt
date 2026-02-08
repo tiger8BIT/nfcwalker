@@ -84,6 +84,12 @@ open class ScanService(
             is ValidationResult.Valid -> {
                 val patrolRun = findActivePatrolRun(orgId)
 
+                val verdict = if (!request.incidents.isNullOrEmpty() || request.checkStatus == CheckStatus.PROBLEMS_FOUND) {
+                    ScanVerdict.WARNING
+                } else {
+                    ScanVerdict.OK
+                }
+
                 logger.debug("Creating scan event for checkpoint: {}", checkpointId)
                 val scanEvent = patrolScanEventRepository.save(
                     PatrolScanEvent(
@@ -93,16 +99,15 @@ open class ScanService(
                         scannedAt = request.scannedAt,
                         lat = request.lat,
                         lon = request.lon,
-                        verdict = ScanVerdict.OK,
+                        verdict = verdict,
                         checkStatus = request.checkStatus,
                         checkNotes = request.checkNotes
                     )
                 )
 
-                logger.info("Scan event recorded: id={}, user={}, cp={}", scanEvent.id, userId, checkpointId)
+                logger.info("Scan event recorded: id={}, user={}, cp={}, verdict={}", scanEvent.id, userId, checkpointId, verdict)
 
                 // Record sub-check results if any
-                logger.debug("Sub-check results in request: {}", request.subCheckResults)
                 request.subCheckResults?.forEach { subResult ->
                     logger.info("Saving sub-check result: subCheckId={}, status={}", subResult.subCheckId, subResult.status)
                     patrolSubCheckEventRepository.save(
@@ -131,7 +136,7 @@ open class ScanService(
 
                 return FinishScanResponse(
                     eventId = scanEvent.id!!,
-                    verdict = ScanVerdict.OK
+                    verdict = verdict
                 )
             }
         }
@@ -357,8 +362,7 @@ open class ScanService(
     }
 
     private fun findActivePatrolRun(orgId: UUID): PatrolRun {
-        val runs = patrolRunRepository.findAll()
-            .filter { it.organizationId == orgId && it.status in listOf(PatrolRunStatus.PENDING, PatrolRunStatus.IN_PROGRESS) }
+        val runs = patrolRunRepository.findByOrganizationIdAndStatusIn(orgId, listOf(PatrolRunStatus.PENDING, PatrolRunStatus.IN_PROGRESS))
 
         return runs.firstOrNull()
             ?: run {

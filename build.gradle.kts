@@ -181,14 +181,57 @@ tasks.withType<Test> {
 val openApiTargetDir = "$projectDir/docs"
 
 tasks.register<Copy>("copyOpenApi") {
-    from(layout.buildDirectory.dir("generated/ksp/main/resources/META-INF/swagger"))
+    dependsOn("kspKotlin")
+    from(layout.buildDirectory.dir("generated/ksp/main/resources/META-INF/swagger")) {
+        include("*.yml")
+    }
     into(openApiTargetDir)
     rename { "openapi.yml" }
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 tasks.named("build") {
-    finalizedBy("copyOpenApi")
+    dependsOn("copyOpenApi")
+}
+
+tasks.register("installGitHooks") {
+    group = "verification"
+    description = "Installs git hooks"
+    doLast {
+        val hooksDir = file(".git/hooks")
+        if (hooksDir.exists()) {
+            val preCommitHook = file(".git/hooks/pre-commit")
+            preCommitHook.writeText(
+                """
+                #!/bin/sh
+                # Git pre-commit hook to ensure build and tests pass
+                echo "?? Running pre-commit checks (build & tests)..."
+                
+                # Set Java 21 for the build
+                export JAVA_HOME=${'$'}(/usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home)
+                
+                # Run the build (which includes tests and generates openapi.yml)
+                ./gradlew build
+                
+                RESULT=$?
+                if [ ${'$'}RESULT -ne 0 ]; then
+                    echo "? Build or tests failed. Commit aborted."
+                    exit ${'$'}RESULT
+                fi
+                
+                # Auto-add generated openapi.yml if it changed
+                if [ -f docs/openapi.yml ]; then
+                    git add docs/openapi.yml
+                    echo "? Added updated openapi.yml to commit"
+                fi
+                
+                echo "? All checks passed!"
+            """.trimIndent().trim()
+            )
+            preCommitHook.setExecutable(true)
+            println("Git pre-commit hook installed successfully.")
+        }
+    }
 }
 
 tasks.register("setupLocalEnv") {
@@ -204,9 +247,9 @@ tasks.register("setupLocalEnv") {
 }
 
 tasks.named("prepareKotlinBuildScriptModel") {
-    dependsOn("setupLocalEnv")
+    dependsOn("setupLocalEnv", "installGitHooks")
 }
 
 // Ensure it runs during common tasks
-tasks.named("clean") { dependsOn("setupLocalEnv") }
+tasks.named("clean") { dependsOn("setupLocalEnv", "installGitHooks") }
 tasks.named("shadowJar") { dependsOn("setupLocalEnv") }

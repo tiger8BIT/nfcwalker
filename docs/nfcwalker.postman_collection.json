@@ -396,7 +396,44 @@
           }
         },
         {
-          "name": "8. Invite Worker",
+          "name": "8. Start Patrol Run",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"runId\", jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"routeId\": \"{{routeId}}\", \"organizationId\": \"{{orgId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/patrol-runs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patrol-runs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "9. Invite Worker",
           "event": [
             {
               "listen": "test",
@@ -428,6 +465,71 @@
               "path": [
                 "api",
                 "invitations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "5. Start Scan (First Checkpoint)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"challenge\", jsonData.challenge);",
+                  "pm.collectionVariables.set(\"runId\", jsonData.policy.runId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"organizationId\": \"{{orgId}}\", \"deviceId\": \"DEVICE-TEST\", \"checkpointCode\": \"{{checkpointCode}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/scan/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "scan",
+                "start"
+              ]
+            }
+          }
+        },
+        {
+          "name": "6. Finish Scan (OK)",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"challenge\": \"{{challenge}}\", \"scannedAt\": \"{{$isoTimestamp}}\", \"checkStatus\": \"OK\", \"checkNotes\": \"Everything is fine\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/scan/finish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "scan",
+                "finish"
               ]
             }
           }
@@ -587,6 +689,249 @@
           }
         }
       ]
+    },
+    {
+      "name": "Flow 4: Incidents & Management",
+      "item": [
+        {
+          "name": "1. Start Scan again (For Incident)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"challenge_inc\", jsonData.challenge);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"organizationId\": \"{{orgId}}\", \"deviceId\": \"DEVICE-TEST\", \"checkpointCode\": \"{{checkpointCode}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/scan/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "scan",
+                "start"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Finish Scan with Incident",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.expect(jsonData.verdict).to.eql(\"WARNING\");"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"challenge\": \"{{challenge_inc}}\", \"scannedAt\": \"{{$isoTimestamp}}\", \"checkStatus\": \"PROBLEMS_FOUND\", \"checkNotes\": \"Broken window\", \"incidents\": [{\"description\": \"Window broken at entrance\", \"severity\": \"HIGH\"}]}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/scan/finish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "scan",
+                "finish"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Boss: List Incidents",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set(\"active_token\", pm.collectionVariables.get(\"boss_token\"));"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.expect(jsonData.content.length).to.be.at.least(1);",
+                  "pm.collectionVariables.set(\"incidentId\", jsonData.content[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/incidents?organizationId={{orgId}}&page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "incidents"
+              ],
+              "query": [
+                {
+                  "key": "organizationId",
+                  "value": "{{orgId}}"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "4. Boss: Resolve Incident",
+          "request": {
+            "method": "PATCH",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\": \"RESOLVED\", \"description\": \"Window fixed by maintenance\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/incidents/{{incidentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "incidents",
+                "{{incidentId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Flow 5: Cleanup & Deletion",
+      "item": [
+        {
+          "name": "1. App Owner Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set(\"active_token\", pm.collectionVariables.get(\"owner_token\"));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/auth/dev/login?email=owner@nfcwalker.com",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "dev",
+                "login"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "owner@nfcwalker.com"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Delete Organization (Full Cleanup)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/organizations/{{orgId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "organizations",
+                "{{orgId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. Verify Deletion (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Should be deleted', function() { pm.response.to.have.status(404); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/organizations/{{orgId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "organizations",
+                "{{orgId}}"
+              ]
+            }
+          }
+        }
+      ]
     }
   ],
   "auth": {
@@ -672,6 +1017,26 @@
     },
     {
       "key": "deviceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "challenge",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "challenge_inc",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "incidentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "runId",
       "value": "",
       "type": "string"
     }

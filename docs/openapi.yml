@@ -768,6 +768,22 @@ paths:
                 type: object
                 additionalProperties:
                   type: object
+  /api/patrol-runs:
+    post:
+      operationId: createRun
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePatrolRunRequest"
+        required: true
+      responses:
+        "200":
+          description: createRun 200 response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatrolRunResponse"
   /api/routes:
     get:
       operationId: listRoutes_1
@@ -1294,6 +1310,26 @@ components:
       properties:
         name:
           type: string
+    CreatePatrolRunRequest:
+      required:
+      - organizationId
+      - routeId
+      type: object
+      properties:
+        routeId:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        plannedStart:
+          type: string
+          format: date-time
+          nullable: true
+        plannedEnd:
+          type: string
+          format: date-time
+          nullable: true
     CreateRouteRequest:
       required:
       - name
@@ -1687,6 +1723,41 @@ components:
       - CURSOR_NEXT
       - CURSOR_PREVIOUS
       - OFFSET
+    PatrolRunResponse:
+      required:
+      - id
+      - organizationId
+      - plannedEnd
+      - plannedStart
+      - routeId
+      - status
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        routeId:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/PatrolRunStatus"
+        plannedStart:
+          type: string
+          format: date-time
+        plannedEnd:
+          type: string
+          format: date-time
+    PatrolRunStatus:
+      type: string
+      enum:
+      - PENDING
+      - IN_PROGRESS
+      - COMPLETED
+      - CANCELLED
+      - MISSED
     RegisterDeviceRequest:
       required:
       - deviceId
